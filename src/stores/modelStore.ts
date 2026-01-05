@@ -8,6 +8,11 @@ import type {
   DropoutMode,
 } from '../types';
 
+export interface PredictionPoint {
+  groundTruth: number;
+  predicted: number;
+}
+
 interface ModelState {
   model: tf.Sequential | null;
   config: ModelConfig;
@@ -15,6 +20,9 @@ interface ModelState {
   currentEpoch: number;
   trainingStatus: TrainingStatus;
   bestValLoss: number | null;
+  trainPredictions: PredictionPoint[];
+  valPredictions: PredictionPoint[];
+  predictionUpdateInterval: number;
 }
 
 interface ModelActions {
@@ -25,6 +33,8 @@ interface ModelActions {
   setCurrentEpoch: (epoch: number) => void;
   setTrainingStatus: (status: TrainingStatus) => void;
   setBestValLoss: (loss: number | null) => void;
+  setPredictions: (train: PredictionPoint[], val: PredictionPoint[]) => void;
+  setPredictionUpdateInterval: (interval: number) => void;
   resetModel: () => void;
   updateLayerConfig: (index: number, config: Partial<LayerConfig>) => void;
   addLayer: () => void;
@@ -62,6 +72,9 @@ const initialState: ModelState = {
   currentEpoch: 0,
   trainingStatus: 'idle',
   bestValLoss: null,
+  trainPredictions: [],
+  valPredictions: [],
+  predictionUpdateInterval: 10,
 };
 
 export const useModelStore = create<ModelStore>((set, get) => ({
@@ -88,6 +101,13 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
   setBestValLoss: (loss) => set({ bestValLoss: loss }),
 
+  setPredictions: (train, val) => set({
+    trainPredictions: train,
+    valPredictions: val,
+  }),
+
+  setPredictionUpdateInterval: (interval) => set({ predictionUpdateInterval: interval }),
+
   resetModel: () => {
     const { model } = get();
     if (model) {
@@ -99,6 +119,8 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       currentEpoch: 0,
       trainingStatus: 'idle',
       bestValLoss: null,
+      trainPredictions: [],
+      valPredictions: [],
     });
   },
 

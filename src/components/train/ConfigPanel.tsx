@@ -104,6 +104,8 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
     trainingStatus,
     setDropoutMode,
     setGlobalDropout,
+    predictionUpdateInterval,
+    setPredictionUpdateInterval,
   } = useModelStore();
 
   const isTraining = trainingStatus === 'training';
@@ -486,6 +488,28 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
               <span>10%</span>
               <span>40%</span>
             </div>
+          </div>
+
+          {/* Prediction Update Interval */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Prediction Update: <span className="font-mono text-accent">every {predictionUpdateInterval} epochs</span>
+            </label>
+            <input
+              type="range"
+              min={1}
+              max={50}
+              step={1}
+              value={predictionUpdateInterval}
+              onChange={(e) => setPredictionUpdateInterval(parseInt(e.target.value))}
+              disabled={isTraining}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-accent disabled:opacity-50"
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>1 (every)</span>
+              <span>50</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">How often to update GT vs Pred plots during training</p>
           </div>
         </div>
       </section>

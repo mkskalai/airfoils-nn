@@ -270,6 +270,44 @@ Build an interactive client-side web application that:
 
 ---
 
+### WP6.5: Tab 2 - GT vs Predicted Scatterplots ✅ IMPLEMENTED
+**Estimated complexity: Medium**
+
+*Note: Implemented instead of WP7 (PCA Projection Heatmap) as a more direct model evaluation visualization.*
+
+#### Tasks:
+1. **Model Store Updates:**
+   - Add `trainPredictions` and `valPredictions` arrays to store GT vs Pred pairs
+   - Add `predictionUpdateInterval` setting (default: 10 epochs)
+   - Add `setPredictions` and `setPredictionUpdateInterval` actions
+
+2. **Training Hook Updates:**
+   - Compute predictions every N epochs (configurable)
+   - Always compute on last epoch
+   - Store prediction points for visualization
+
+3. **PredictionScatterplot Component (D3.js):**
+   - X-axis: Ground Truth values
+   - Y-axis: Predicted values
+   - Diagonal y=x reference line (dashed)
+   - Dotted residual lines from each point to diagonal
+   - R² and RMSE metrics in header
+   - Interactive tooltips showing GT, Pred, and Residual
+   - Adaptive point sizing based on dataset size
+
+4. **UI Integration:**
+   - Two side-by-side scatterplots (Train and Validation)
+   - Color-coded: Train (accent blue), Validation (warm orange)
+   - Sample count display
+   - Configurable update interval slider (1-50 epochs)
+
+#### Deliverables:
+- Real-time GT vs Pred visualization during training
+- Clear model performance metrics (R², RMSE)
+- Configurable update frequency for performance
+
+---
+
 ### WP7: Tab 2 - PCA Projection Heatmap
 **Estimated complexity: High**
 
@@ -497,19 +535,21 @@ Build an interactive client-side web application that:
 ## Implementation Order (Recommended)
 
 ```
-WP1 (Setup)
+WP1 (Setup)              ✅ DONE
     ↓
-WP2 (Data Layer)
+WP2 (Data Layer)         ✅ DONE
     ↓
-WP3 (Explore Tab) ←── Can demo early
+WP3 (Explore Tab)        ✅ DONE ←── Can demo early
     ↓
-WP4 (NN Config UI)
+WP4 (NN Config UI)       ✅ DONE
     ↓
-WP5 (TF.js Training)
+WP5 (TF.js Training)     ✅ DONE
     ↓
-WP6 (Loss Chart) ←── First training visualization
+WP6 (Loss Chart)         ✅ DONE ←── First training visualization
     ↓
-WP7 (PCA Heatmap)
+WP6.5 (GT vs Pred)       ✅ DONE ←── Added instead of WP7
+    ↓
+WP7 (PCA Heatmap)        ⏸️  SKIPPED (optional)
     ↓
 WP8 (Feature Heatmap)
     ↓

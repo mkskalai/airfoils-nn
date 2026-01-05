@@ -4,9 +4,11 @@ import { useTraining } from '../../hooks/useTraining';
 import { ConfigPanel } from './ConfigPanel';
 import { NetworkPreview } from './NetworkPreview';
 import { LossChart } from './LossChart';
+import { PredictionScatterplot } from './PredictionScatterplot';
+import { THEME_COLORS } from '../../utils/colors';
 
 export function TrainTab() {
-  const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss } = useModelStore();
+  const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss, trainPredictions, valPredictions } = useModelStore();
   const { trainData, validationData } = useDataStore();
   const { startTraining, pauseTraining, resumeTraining, stopTraining, reset } = useTraining();
 
@@ -166,30 +168,40 @@ export function TrainTab() {
             </div>
           </div>
 
-          {/* Additional visualizations placeholder */}
+          {/* Prediction Scatterplots */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                PCA Projection
-              </h3>
-              <div className="h-40 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200">
-                <p className="text-gray-400 text-sm">PCA heatmap (WP7)</p>
+                <span className="text-sm text-gray-500">
+                  {trainPredictions.length > 0 ? `${trainPredictions.length} samples` : ''}
+                </span>
               </div>
+              <PredictionScatterplot
+                data={trainPredictions}
+                title="Training Set"
+                color={THEME_COLORS.accent}
+                height={280}
+              />
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-warm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                Feature Heatmap
-              </h3>
-              <div className="h-40 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200">
-                <p className="text-gray-400 text-sm">2D slice view (WP8)</p>
+                <span className="text-sm text-gray-500">
+                  {valPredictions.length > 0 ? `${valPredictions.length} samples` : ''}
+                </span>
               </div>
+              <PredictionScatterplot
+                data={valPredictions}
+                title="Validation Set"
+                color={THEME_COLORS.warm}
+                height={280}
+              />
             </div>
           </div>
         </div>

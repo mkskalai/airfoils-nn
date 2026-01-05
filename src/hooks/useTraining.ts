@@ -1,10 +1,11 @@
 import { useRef, useCallback } from 'react';
-import { useModelStore } from '../stores/modelStore';
+import { useModelStore, type PredictionPoint } from '../stores/modelStore';
 import { useDataStore } from '../stores/dataStore';
 import {
   buildModel,
   trainModel,
   createTrainingController,
+  predict,
   type TrainingController,
 } from '../utils/model';
 import { getFeatureMatrix, getTargetVector } from '../utils/data';
@@ -14,11 +15,13 @@ export function useTraining() {
 
   const {
     config,
+    predictionUpdateInterval,
     setModel,
     addHistoryEntry,
     clearHistory,
     setCurrentEpoch,
     setTrainingStatus,
+    setPredictions,
     resetModel,
   } = useModelStore();
 
@@ -60,6 +63,10 @@ export function useTraining() {
       const controller = createTrainingController();
       controllerRef.current = controller;
 
+      // Capture update interval at start (so it doesn't change mid-training)
+      const updateInterval = predictionUpdateInterval;
+      const totalEpochs = config.epochs;
+
       // Train the model
       await trainModel(
         model,
@@ -72,6 +79,27 @@ export function useTraining() {
           onEpochEnd: (epoch, loss, valLoss) => {
             setCurrentEpoch(epoch);
             addHistoryEntry({ epoch, loss, valLoss });
+
+            // Compute predictions every N epochs or on last epoch
+            const isLastEpoch = epoch === totalEpochs;
+            const shouldUpdate = epoch % updateInterval === 0 || isLastEpoch;
+
+            if (shouldUpdate) {
+              const trainPreds = predict(model, trainX);
+              const valPreds = predict(model, valX);
+
+              const trainPredictions: PredictionPoint[] = trainY.map((gt, i) => ({
+                groundTruth: gt,
+                predicted: trainPreds[i],
+              }));
+
+              const valPredictions: PredictionPoint[] = valY.map((gt, i) => ({
+                groundTruth: gt,
+                predicted: valPreds[i],
+              }));
+
+              setPredictions(trainPredictions, valPredictions);
+            }
           },
           onTrainingEnd: () => {
             setTrainingStatus('complete');
@@ -92,6 +120,7 @@ export function useTraining() {
     }
   }, [
     config,
+    predictionUpdateInterval,
     trainData,
     validationData,
     setModel,
@@ -99,6 +128,7 @@ export function useTraining() {
     clearHistory,
     setCurrentEpoch,
     setTrainingStatus,
+    setPredictions,
     resetModel,
   ]);
 
