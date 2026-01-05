@@ -3,6 +3,7 @@ import { useDataStore } from '../../stores/dataStore';
 import { useTraining } from '../../hooks/useTraining';
 import { ConfigPanel } from './ConfigPanel';
 import { NetworkPreview } from './NetworkPreview';
+import { LossChart } from './LossChart';
 
 export function TrainTab() {
   const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss } = useModelStore();
@@ -134,9 +135,10 @@ export function TrainTab() {
               Training History
             </h3>
 
-            {trainingHistory.length > 0 ? (
-              <div className="space-y-4">
-                {/* Mini loss display */}
+            {/* Loss chart with mini stats */}
+            <div className="space-y-4">
+              {/* Mini loss display */}
+              {trainingHistory.length > 0 && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-accent/5 rounded-lg">
                     <div className="text-sm text-gray-500 mb-1">Training Loss</div>
@@ -151,21 +153,17 @@ export function TrainTab() {
                     </div>
                   </div>
                 </div>
+              )}
 
-                {/* Placeholder for D3 chart - will be implemented in WP6 */}
-                <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200">
-                  <p className="text-gray-400 text-sm">Loss chart will be rendered here (WP6)</p>
-                </div>
+              {/* D3 Loss Chart */}
+              <div className="bg-gray-50 rounded-lg p-2">
+                <LossChart
+                  history={trainingHistory}
+                  bestValLoss={bestValLoss}
+                  height={280}
+                />
               </div>
-            ) : (
-              <div className="h-48 bg-gray-50 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
-                <svg className="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <p className="text-gray-400">Training history will appear here</p>
-                <p className="text-gray-300 text-sm mt-1">Click "Start Training" to begin</p>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Additional visualizations placeholder */}
