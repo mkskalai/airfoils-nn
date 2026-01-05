@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  /* TensorFlow Playground inspired palette */
+  --color-primary: #0d47a1;
+  --color-primary-dark: #1a2a3a;
+  --color-primary-light: #e3f2fd;
+  --color-accent: #03a9f4;
+  --color-accent-light: #b3e5fc;
+  --color-warm: #f57c00;
+  --color-warm-light: #ffe0b2;
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+
+  /* Grays */
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #eeeeee;
+  --color-gray-300: #e0e0e0;
+  --color-gray-400: #bdbdbd;
+  --color-gray-500: #9e9e9e;
+  --color-gray-600: #757575;
+  --color-gray-700: #616161;
+  --color-gray-800: #424242;
+  --color-gray-900: #212121;
+}
+
+body {
+  @apply bg-bg text-gray-800 min-h-screen;
+  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+#root {
+  @apply min-h-screen;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gray-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}
