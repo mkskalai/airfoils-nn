@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useModelStore } from '../../stores/modelStore';
 import { useDataStore } from '../../stores/dataStore';
 import { useTraining } from '../../hooks/useTraining';
@@ -11,6 +12,18 @@ export function TrainTab() {
   const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss, trainPredictions, valPredictions } = useModelStore();
   const { trainData, validationData } = useDataStore();
   const { startTraining, pauseTraining, resumeTraining, stopTraining, reset } = useTraining();
+
+  // Compute shared domain for both scatterplots so they have the same axis scale
+  const sharedDomain = useMemo<[number, number] | undefined>(() => {
+    const allPredictions = [...trainPredictions, ...valPredictions];
+    if (allPredictions.length === 0) return undefined;
+
+    const allValues = allPredictions.flatMap(d => [d.groundTruth, d.predicted]);
+    const minVal = Math.min(...allValues);
+    const maxVal = Math.max(...allValues);
+    const padding = (maxVal - minVal) * 0.05 || 0.1;
+    return [minVal - padding, maxVal + padding];
+  }, [trainPredictions, valPredictions]);
 
   const statusConfig = {
     idle: { color: 'bg-gray-100 text-gray-600', icon: '○', label: 'Ready' },
@@ -184,6 +197,7 @@ export function TrainTab() {
                 title="Training Set"
                 color={THEME_COLORS.accent}
                 height={280}
+                sharedDomain={sharedDomain}
               />
             </div>
 
@@ -201,9 +215,11 @@ export function TrainTab() {
                 title="Validation Set"
                 color={THEME_COLORS.warm}
                 height={280}
+                sharedDomain={sharedDomain}
               />
             </div>
           </div>
+
         </div>
       </div>
     </div>

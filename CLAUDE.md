@@ -32,11 +32,11 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - `dataStore.ts` - Dataset loading, normalization (none/min-max/z-score/custom), train/val split
 - `modelStore.ts` - Model configuration, training state, history, predictions
 
-**Types** (`src/types/index.ts`):
+**Types** (`src/types/index.ts` and `src/stores/modelStore.ts`):
 - `DataPoint` - 5 input features + 1 target (sound pressure level)
 - `ModelConfig` - Layer configuration, hyperparameters, regularization
 - `TrainingHistory` - Epoch-by-epoch loss tracking
-- `PredictionPoint` - GT vs Predicted pairs for visualization
+- `PredictionPoint` - GT vs Predicted pairs for visualization (original dB scale)
 
 **Data Flow**:
 1. Dataset loaded from `/public/airfoil_self_noise.dat` on app mount
@@ -51,7 +51,7 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - `ConfigPanel.tsx` - Normalization, architecture, hyperparameters, regularization
 - `NetworkPreview.tsx` - Visual preview of network architecture
 - `LossChart.tsx` - Real-time training/validation loss chart (D3.js)
-- `PredictionScatterplot.tsx` - GT vs Predicted visualization with R², RMSE
+- `PredictionScatterplot.tsx` - GT vs Predicted visualization with R², RMSE (original dB scale)
 
 **Explore Tab** (`src/components/explore/`):
 - `CorrelationHeatmap.tsx` - 6x6 Pearson correlation matrix
@@ -71,6 +71,6 @@ Custom TensorFlow Playground-inspired palette defined in `src/index.css`:
 
 See `PLAN.md` for detailed work packages. Current status:
 - ✅ WP1-6: Setup, Data Layer, Explore Tab, Config UI, Training, Loss Chart
-- ✅ WP6.5: GT vs Predicted Scatterplots (added)
-- ⏸️ WP7: PCA Heatmap (skipped)
-- 🔲 WP8-12: Feature Heatmap, Network Viz, Prediction UI, Airfoil Viz, Polish
+- ✅ WP6.5: GT vs Predicted Scatterplots (with denormalized values)
+- 🔲 WP7-10: Network Viz, Prediction UI, Airfoil Viz, Polish
+- 🔲 WP11-12: PCA Analysis (Explore), Error Analysis (Training)

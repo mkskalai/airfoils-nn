@@ -8,7 +8,7 @@ import {
   predict,
   type TrainingController,
 } from '../utils/model';
-import { getFeatureMatrix, getTargetVector } from '../utils/data';
+import { getFeatureMatrix, getTargetVector, denormalizeValue } from '../utils/data';
 
 export function useTraining() {
   const controllerRef = useRef<TrainingController | null>(null);
@@ -25,7 +25,7 @@ export function useTraining() {
     resetModel,
   } = useModelStore();
 
-  const { trainData, validationData } = useDataStore();
+  const { trainData, validationData, stats, normalizationConfig } = useDataStore();
 
   const startTraining = useCallback(async () => {
     // Validate data
@@ -59,6 +59,10 @@ export function useTraining() {
       const valX = getFeatureMatrix(validationData);
       const valY = getTargetVector(validationData);
 
+      // Get target normalization config for denormalization
+      const targetNormConfig = normalizationConfig.targetNormalization;
+      const targetStats = stats?.soundPressureLevel;
+
       // Create controller
       const controller = createTrainingController();
       controllerRef.current = controller;
@@ -88,14 +92,21 @@ export function useTraining() {
               const trainPreds = predict(model, trainX);
               const valPreds = predict(model, valX);
 
+              // Denormalize predictions and ground truth back to original scale
+              // so metrics (R², RMSE) reflect real dB values
+              const denorm = (val: number) => {
+                if (!targetStats) return val;
+                return denormalizeValue(val, targetStats, targetNormConfig.type);
+              };
+
               const trainPredictions: PredictionPoint[] = trainY.map((gt, i) => ({
-                groundTruth: gt,
-                predicted: trainPreds[i],
+                groundTruth: denorm(gt),
+                predicted: denorm(trainPreds[i]),
               }));
 
               const valPredictions: PredictionPoint[] = valY.map((gt, i) => ({
-                groundTruth: gt,
-                predicted: valPreds[i],
+                groundTruth: denorm(gt),
+                predicted: denorm(valPreds[i]),
               }));
 
               setPredictions(trainPredictions, valPredictions);
@@ -123,6 +134,8 @@ export function useTraining() {
     predictionUpdateInterval,
     trainData,
     validationData,
+    stats,
+    normalizationConfig,
     setModel,
     addHistoryEntry,
     clearHistory,

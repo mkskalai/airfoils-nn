@@ -8,6 +8,7 @@ interface PredictionScatterplotProps {
   title: string;
   color: string;
   height?: number;
+  sharedDomain?: [number, number];
 }
 
 const MARGIN = { top: 20, right: 20, bottom: 50, left: 60 };
@@ -17,6 +18,7 @@ export function PredictionScatterplot({
   title,
   color,
   height = 280,
+  sharedDomain,
 }: PredictionScatterplotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -64,11 +66,17 @@ export function PredictionScatterplot({
       };
     }
 
-    const allValues = data.flatMap((d) => [d.groundTruth, d.predicted]);
-    const minVal = Math.min(...allValues);
-    const maxVal = Math.max(...allValues);
-    const padding = (maxVal - minVal) * 0.05 || 0.1;
-    const domain: [number, number] = [minVal - padding, maxVal + padding];
+    // Use shared domain if provided, otherwise compute from data
+    let domain: [number, number];
+    if (sharedDomain) {
+      domain = sharedDomain;
+    } else {
+      const allValues = data.flatMap((d) => [d.groundTruth, d.predicted]);
+      const minVal = Math.min(...allValues);
+      const maxVal = Math.max(...allValues);
+      const padding = (maxVal - minVal) * 0.05 || 0.1;
+      domain = [minVal - padding, maxVal + padding];
+    }
 
     // Calculate R^2 (coefficient of determination)
     const meanGT = d3.mean(data, (d) => d.groundTruth) || 0;
@@ -86,7 +94,7 @@ export function PredictionScatterplot({
       r2: r2Value,
       rmse: rmseValue,
     };
-  }, [data, innerWidth, innerHeight]);
+  }, [data, sharedDomain, innerWidth, innerHeight]);
 
   // D3 rendering
   useEffect(() => {

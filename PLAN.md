@@ -273,8 +273,6 @@ Build an interactive client-side web application that:
 ### WP6.5: Tab 2 - GT vs Predicted Scatterplots ✅ IMPLEMENTED
 **Estimated complexity: Medium**
 
-*Note: Implemented instead of WP7 (PCA Projection Heatmap) as a more direct model evaluation visualization.*
-
 #### Tasks:
 1. **Model Store Updates:**
    - Add `trainPredictions` and `valPredictions` arrays to store GT vs Pred pairs
@@ -284,14 +282,15 @@ Build an interactive client-side web application that:
 2. **Training Hook Updates:**
    - Compute predictions every N epochs (configurable)
    - Always compute on last epoch
+   - Denormalize predictions back to original scale (dB)
    - Store prediction points for visualization
 
 3. **PredictionScatterplot Component (D3.js):**
-   - X-axis: Ground Truth values
-   - Y-axis: Predicted values
+   - X-axis: Ground Truth values (original dB scale)
+   - Y-axis: Predicted values (original dB scale)
    - Diagonal y=x reference line (dashed)
    - Dotted residual lines from each point to diagonal
-   - R² and RMSE metrics in header
+   - R² and RMSE metrics computed on original quantities
    - Interactive tooltips showing GT, Pred, and Residual
    - Adaptive point sizing based on dataset size
 
@@ -303,85 +302,12 @@ Build an interactive client-side web application that:
 
 #### Deliverables:
 - Real-time GT vs Pred visualization during training
-- Clear model performance metrics (R², RMSE)
+- Clear model performance metrics (R², RMSE) on original scale
 - Configurable update frequency for performance
 
 ---
 
-### WP7: Tab 2 - PCA Projection Heatmap
-**Estimated complexity: High**
-
-#### Tasks:
-1. **PCA Computation:**
-   - Project 5D feature space to 2D
-   - Store principal components for inverse transformation
-   - Compute explained variance ratio
-
-2. **Heatmap Visualization:**
-   - Create grid over PCA space
-   - For each grid point, inverse transform to feature space
-   - Run prediction through model
-   - Color by predicted sound pressure level
-
-3. **Data Overlay:**
-   - Plot actual data points on heatmap
-   - Color actual points by true target value
-   - Show prediction vs actual comparison
-
-4. **Live Updates:**
-   - Recompute predictions during/after training
-   - Throttle updates for performance (every N epochs)
-
-5. **Interactivity:**
-   - Hover to show coordinates and predicted value
-   - Click to see detailed feature values
-
-#### Deliverables:
-- PCA-projected prediction heatmap
-- Overlay of actual data points
-- Live updates during training
-
----
-
-### WP8: Tab 2 - Feature Space Heatmap (2D Slice)
-**Estimated complexity: High**
-
-#### Tasks:
-1. **Feature Selection UI:**
-   - Dropdown to select 2 "running" features (X and Y axes)
-   - Remaining 3 features become "fixed"
-   - For each fixed feature: slider to set value
-   - Show data statistics to guide slider ranges
-
-2. **Heatmap Generation:**
-   - Create grid over selected 2D feature space
-   - Fill fixed features with slider values
-   - Run predictions for entire grid
-   - Color by predicted sound pressure level
-
-3. **Visualization (D3.js):**
-   - Continuous color gradient (not discrete cells)
-   - Axis labels with feature names and units
-   - Contour lines (optional, like topographic maps)
-   - Color scale legend
-
-4. **Data Context:**
-   - Overlay data points that are "close" to fixed values
-   - Adjustable tolerance for what counts as "close"
-
-5. **Live Updates:**
-   - Update when sliders change
-   - Update during/after training
-   - Debounce for smooth interaction
-
-#### Deliverables:
-- Interactive 2D slice through 5D feature space
-- Intuitive controls for fixing features
-- Live prediction updates
-
----
-
-### WP9: Tab 2 - Network Architecture Visualization
+### WP7: Tab 2 - Network Architecture Visualization
 **Estimated complexity: High**
 
 #### Tasks:
@@ -422,7 +348,7 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP10: Tab 3 - Prediction Interface
+### WP8: Tab 3 - Prediction Interface
 **Estimated complexity: Medium**
 
 #### Tasks:
@@ -459,7 +385,7 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP11: Tab 3 - 2D Airfoil Visualization
+### WP9: Tab 3 - 2D Airfoil Visualization
 **Estimated complexity: Medium**
 
 #### Tasks:
@@ -490,7 +416,7 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP12: Polish & Integration
+### WP10: Polish & Integration
 **Estimated complexity: Medium**
 
 #### Tasks:
@@ -532,6 +458,72 @@ Build an interactive client-side web application that:
 
 ---
 
+### WP11: Tab 1 - PCA Analysis in Data Visualization
+**Estimated complexity: Medium**
+
+#### Tasks:
+1. **PCA Computation:**
+   - Compute PCA on the 5 input features
+   - Calculate explained variance ratio for each component
+   - Store PC1 and PC2 projections for all data points
+
+2. **PCA Scatterplot (D3.js):**
+   - X-axis: PC1, Y-axis: PC2
+   - Points colored by target variable (sound pressure level)
+   - Diverging color scale for noise level
+   - Interactive tooltips showing PC coordinates and all feature values
+   - Explained variance display in axis labels
+
+3. **Loading Plot:**
+   - Show feature contribution to each principal component
+   - Bar chart or vector representation
+   - Helps interpret what PC1 and PC2 represent
+
+4. **UI Integration:**
+   - Add as a visualization option in the Explore tab
+   - Display total explained variance
+   - Link with other explore visualizations
+
+#### Deliverables:
+- PCA visualization of the dataset
+- Clear feature loading interpretation
+- Understanding of data structure in reduced dimensions
+
+---
+
+### WP12: Tab 2 - Error Analysis
+**Estimated complexity: Medium**
+
+#### Tasks:
+1. **Residual Distribution:**
+   - Histogram of prediction residuals (pred - gt)
+   - Show for both train and validation sets
+   - Compute and display mean, std, skewness of residuals
+   - Ideal: centered at 0, symmetric distribution
+
+2. **Residual vs Feature Plots:**
+   - One plot per input feature
+   - X-axis: Feature value, Y-axis: Residual
+   - Identify features where model struggles
+   - Detect non-linear patterns the model missed
+
+3. **Error Metrics Summary:**
+   - MAE, MSE, RMSE, R²
+   - Max absolute error
+   - Percentage of predictions within certain thresholds (e.g., ±1dB, ±3dB)
+
+4. **UI Integration:**
+   - Add as a collapsible section in Training tab
+   - Update after training completes
+   - Option to view train vs validation separately
+
+#### Deliverables:
+- Comprehensive error analysis dashboard
+- Residual diagnostics for model improvement
+- Clear identification of model weaknesses
+
+---
+
 ## Implementation Order (Recommended)
 
 ```
@@ -547,19 +539,19 @@ WP5 (TF.js Training)     ✅ DONE
     ↓
 WP6 (Loss Chart)         ✅ DONE ←── First training visualization
     ↓
-WP6.5 (GT vs Pred)       ✅ DONE ←── Added instead of WP7
+WP6.5 (GT vs Pred)       ✅ DONE ←── Model evaluation visualization
     ↓
-WP7 (PCA Heatmap)        ⏸️  SKIPPED (optional)
+WP7 (Architecture Viz) ←── Complete training tab
     ↓
-WP8 (Feature Heatmap)
+WP8 (Prediction UI)
     ↓
-WP9 (Architecture Viz) ←── Complete training tab
+WP9 (Airfoil Viz)
     ↓
-WP10 (Prediction UI)
+WP10 (Polish)
     ↓
-WP11 (Airfoil Viz)
+WP11 (PCA Analysis) ←── Data exploration enhancement
     ↓
-WP12 (Polish)
+WP12 (Error Analysis) ←── Training diagnostics
 ```
 
 ---
@@ -571,7 +563,6 @@ WP12 (Polish)
 | TF.js memory leaks | Rigorous use of `tf.tidy()` and `tensor.dispose()` |
 | Slow training blocking UI | Use `await tf.nextFrame()` in training loop |
 | Large model weight viz | Limit visible connections; add filtering options |
-| PCA heatmap slow updates | Throttle updates; use canvas for rendering |
 | Mobile performance | Reduce visualization resolution; lazy load |
 | D3 + React conflicts | Use refs and useEffect; let D3 handle SVG, React handle lifecycle |
 
@@ -596,13 +587,14 @@ airfoils/
 │   │   │   ├── ExploreTab.tsx
 │   │   │   ├── Scatterplot.tsx
 │   │   │   ├── CorrelationHeatmap.tsx
-│   │   │   └── DistributionChart.tsx
+│   │   │   ├── DistributionChart.tsx
+│   │   │   └── PCAScatterplot.tsx
 │   │   ├── train/
 │   │   │   ├── TrainTab.tsx
 │   │   │   ├── ConfigPanel.tsx
 │   │   │   ├── LossChart.tsx
-│   │   │   ├── PCAHeatmap.tsx
-│   │   │   ├── FeatureHeatmap.tsx
+│   │   │   ├── PredictionScatterplot.tsx
+│   │   │   ├── ErrorAnalysis.tsx
 │   │   │   └── NetworkViz.tsx
 │   │   └── predict/
 │   │       ├── PredictTab.tsx
