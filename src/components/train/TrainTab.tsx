@@ -1,11 +1,13 @@
 import { useModelStore } from '../../stores/modelStore';
 import { useDataStore } from '../../stores/dataStore';
+import { useTraining } from '../../hooks/useTraining';
 import { ConfigPanel } from './ConfigPanel';
 import { NetworkPreview } from './NetworkPreview';
 
 export function TrainTab() {
-  const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss, resetModel, setTrainingStatus } = useModelStore();
-  const { rawData } = useDataStore();
+  const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss } = useModelStore();
+  const { trainData, validationData } = useDataStore();
+  const { startTraining, pauseTraining, resumeTraining, stopTraining, reset } = useTraining();
 
   const statusConfig = {
     idle: { color: 'bg-gray-100 text-gray-600', icon: '○', label: 'Ready' },
@@ -16,22 +18,28 @@ export function TrainTab() {
   };
 
   const handleTrain = () => {
-    // Training will be implemented in WP5
-    // For now, just show a message that it's ready for WP5
-    console.log('Training will be implemented in WP5');
-    console.log('Config:', config);
-    console.log('Dataset size:', rawData.length);
+    if (trainingStatus === 'paused') {
+      resumeTraining();
+    } else {
+      startTraining();
+    }
   };
 
   const handlePause = () => {
     if (trainingStatus === 'training') {
-      setTrainingStatus('paused');
+      pauseTraining();
     }
   };
 
-  const handleReset = () => {
-    resetModel();
+  const handleStop = () => {
+    stopTraining();
   };
+
+  const handleReset = () => {
+    reset();
+  };
+
+  const dataReady = trainData.length > 0 && validationData.length > 0;
 
   const latestLoss = trainingHistory.length > 0 ? trainingHistory[trainingHistory.length - 1] : null;
 
@@ -43,7 +51,9 @@ export function TrainTab() {
           <ConfigPanel
             onTrain={handleTrain}
             onPause={handlePause}
+            onStop={handleStop}
             onReset={handleReset}
+            dataReady={dataReady}
           />
         </div>
 
