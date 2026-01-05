@@ -36,7 +36,7 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - `DataPoint` - 5 input features + 1 target (sound pressure level)
 - `ModelConfig` - Layer configuration, hyperparameters, regularization
 - `TrainingHistory` - Epoch-by-epoch loss tracking
-- `PredictionPoint` - GT vs Predicted pairs for visualization (original dB scale)
+- `PredictionPoint` - GT vs Predicted pairs + feature values for visualization (original dB scale)
 
 **Data Flow**:
 1. Dataset loaded from `/public/airfoil_self_noise.dat` on app mount
@@ -52,6 +52,8 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - `NetworkPreview.tsx` - Visual preview of network architecture
 - `LossChart.tsx` - Real-time training/validation loss chart (D3.js)
 - `PredictionScatterplot.tsx` - GT vs Predicted visualization with R², RMSE (original dB scale)
+- `ErrorAnalysis.tsx` - Residual histogram, error metrics (MAE, RMSE, R², within-threshold %)
+- `ResidualVsFeature.tsx` - Residual vs feature scatterplots (5 plots, one per input feature)
 
 **Explore Tab** (`src/components/explore/`):
 - `CorrelationHeatmap.tsx` - 6x6 Pearson correlation matrix
@@ -72,5 +74,6 @@ Custom TensorFlow Playground-inspired palette defined in `src/index.css`:
 See `PLAN.md` for detailed work packages. Current status:
 - ✅ WP1-6: Setup, Data Layer, Explore Tab, Config UI, Training, Loss Chart
 - ✅ WP6.5: GT vs Predicted Scatterplots (with denormalized values)
-- 🔲 WP7-10: Network Viz, Prediction UI, Airfoil Viz, Polish
-- 🔲 WP11-12: PCA Analysis (Explore), Error Analysis (Training)
+- ✅ WP7: Error Analysis (residual histogram, error metrics, diagnostics)
+- 🔲 WP8-11: Network Viz, Prediction UI, Airfoil Viz, Polish
+- 🔲 WP12: PCA Analysis (Explore)

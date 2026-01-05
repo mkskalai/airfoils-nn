@@ -8,7 +8,7 @@ import {
   predict,
   type TrainingController,
 } from '../utils/model';
-import { getFeatureMatrix, getTargetVector, denormalizeValue } from '../utils/data';
+import { getFeatureMatrix, getTargetVector, denormalizeValue, trainValidationSplit } from '../utils/data';
 
 export function useTraining() {
   const controllerRef = useRef<TrainingController | null>(null);
@@ -25,7 +25,7 @@ export function useTraining() {
     resetModel,
   } = useModelStore();
 
-  const { trainData, validationData, stats, normalizationConfig } = useDataStore();
+  const { trainData, validationData, rawData, stats, normalizationConfig, validationSplit } = useDataStore();
 
   const startTraining = useCallback(async () => {
     // Validate data
@@ -62,6 +62,13 @@ export function useTraining() {
       // Get target normalization config for denormalization
       const targetNormConfig = normalizationConfig.targetNormalization;
       const targetStats = stats?.soundPressureLevel;
+
+      // Get raw data split (same seed=42 as in data store) for feature values
+      const { train: rawTrain, validation: rawVal } = trainValidationSplit(
+        rawData,
+        validationSplit,
+        42
+      );
 
       // Create controller
       const controller = createTrainingController();
@@ -102,11 +109,21 @@ export function useTraining() {
               const trainPredictions: PredictionPoint[] = trainY.map((gt, i) => ({
                 groundTruth: denorm(gt),
                 predicted: denorm(trainPreds[i]),
+                frequency: rawTrain[i].frequency,
+                angleOfAttack: rawTrain[i].angleOfAttack,
+                chordLength: rawTrain[i].chordLength,
+                freeStreamVelocity: rawTrain[i].freeStreamVelocity,
+                suctionSideDisplacementThickness: rawTrain[i].suctionSideDisplacementThickness,
               }));
 
               const valPredictions: PredictionPoint[] = valY.map((gt, i) => ({
                 groundTruth: denorm(gt),
                 predicted: denorm(valPreds[i]),
+                frequency: rawVal[i].frequency,
+                angleOfAttack: rawVal[i].angleOfAttack,
+                chordLength: rawVal[i].chordLength,
+                freeStreamVelocity: rawVal[i].freeStreamVelocity,
+                suctionSideDisplacementThickness: rawVal[i].suctionSideDisplacementThickness,
               }));
 
               setPredictions(trainPredictions, valPredictions);
@@ -134,6 +151,8 @@ export function useTraining() {
     predictionUpdateInterval,
     trainData,
     validationData,
+    rawData,
+    validationSplit,
     stats,
     normalizationConfig,
     setModel,

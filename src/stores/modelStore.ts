@@ -11,6 +11,12 @@ import type {
 export interface PredictionPoint {
   groundTruth: number;
   predicted: number;
+  // Feature values (original scale for residual vs feature analysis)
+  frequency: number;
+  angleOfAttack: number;
+  chordLength: number;
+  freeStreamVelocity: number;
+  suctionSideDisplacementThickness: number;
 }
 
 interface ModelState {

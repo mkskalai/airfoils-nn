@@ -307,7 +307,40 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP7: Tab 2 - Network Architecture Visualization
+### WP7: Tab 2 - Error Analysis ✅ IMPLEMENTED
+**Estimated complexity: Medium**
+
+#### Tasks:
+1. **Residual Distribution:**
+   - Histogram of prediction residuals (pred - gt)
+   - Show for both train and validation sets
+   - Compute and display mean, std, skewness of residuals
+   - Ideal: centered at 0, symmetric distribution
+
+2. **Residual vs Feature Plots:**
+   - One plot per input feature
+   - X-axis: Feature value, Y-axis: Residual
+   - Identify features where model struggles
+   - Detect non-linear patterns the model missed
+
+3. **Error Metrics Summary:**
+   - MAE, MSE, RMSE, R²
+   - Max absolute error
+   - Percentage of predictions within certain thresholds (e.g., ±1dB, ±3dB)
+
+4. **UI Integration:**
+   - Add as a section below the scatter plots in Training tab
+   - Update after training completes
+   - Option to view train vs validation separately
+
+#### Deliverables:
+- Comprehensive error analysis dashboard
+- Residual diagnostics for model improvement
+- Clear identification of model weaknesses
+
+---
+
+### WP8: Tab 2 - Network Architecture Visualization
 **Estimated complexity: High**
 
 #### Tasks:
@@ -348,7 +381,7 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP8: Tab 3 - Prediction Interface
+### WP9: Tab 3 - Prediction Interface
 **Estimated complexity: Medium**
 
 #### Tasks:
@@ -385,7 +418,7 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP9: Tab 3 - 2D Airfoil Visualization
+### WP10: Tab 3 - 2D Airfoil Visualization
 **Estimated complexity: Medium**
 
 #### Tasks:
@@ -416,7 +449,7 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP10: Polish & Integration
+### WP11: Polish & Integration
 **Estimated complexity: Medium**
 
 #### Tasks:
@@ -458,7 +491,7 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP11: Tab 1 - PCA Analysis in Data Visualization
+### WP12: Tab 1 - PCA Analysis in Data Visualization
 **Estimated complexity: Medium**
 
 #### Tasks:
@@ -491,39 +524,6 @@ Build an interactive client-side web application that:
 
 ---
 
-### WP12: Tab 2 - Error Analysis
-**Estimated complexity: Medium**
-
-#### Tasks:
-1. **Residual Distribution:**
-   - Histogram of prediction residuals (pred - gt)
-   - Show for both train and validation sets
-   - Compute and display mean, std, skewness of residuals
-   - Ideal: centered at 0, symmetric distribution
-
-2. **Residual vs Feature Plots:**
-   - One plot per input feature
-   - X-axis: Feature value, Y-axis: Residual
-   - Identify features where model struggles
-   - Detect non-linear patterns the model missed
-
-3. **Error Metrics Summary:**
-   - MAE, MSE, RMSE, R²
-   - Max absolute error
-   - Percentage of predictions within certain thresholds (e.g., ±1dB, ±3dB)
-
-4. **UI Integration:**
-   - Add as a collapsible section in Training tab
-   - Update after training completes
-   - Option to view train vs validation separately
-
-#### Deliverables:
-- Comprehensive error analysis dashboard
-- Residual diagnostics for model improvement
-- Clear identification of model weaknesses
-
----
-
 ## Implementation Order (Recommended)
 
 ```
@@ -541,17 +541,17 @@ WP6 (Loss Chart)         ✅ DONE ←── First training visualization
     ↓
 WP6.5 (GT vs Pred)       ✅ DONE ←── Model evaluation visualization
     ↓
-WP7 (Architecture Viz) ←── Complete training tab
+WP7 (Error Analysis)     ✅ DONE ←── Training diagnostics
     ↓
-WP8 (Prediction UI)
+WP8 (Architecture Viz) ←── Complete training tab
     ↓
-WP9 (Airfoil Viz)
+WP9 (Prediction UI)
     ↓
-WP10 (Polish)
+WP10 (Airfoil Viz)
     ↓
-WP11 (PCA Analysis) ←── Data exploration enhancement
+WP11 (Polish)
     ↓
-WP12 (Error Analysis) ←── Training diagnostics
+WP12 (PCA Analysis) ←── Data exploration enhancement
 ```
 
 ---

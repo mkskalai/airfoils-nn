@@ -6,6 +6,7 @@ import { ConfigPanel } from './ConfigPanel';
 import { NetworkPreview } from './NetworkPreview';
 import { LossChart } from './LossChart';
 import { PredictionScatterplot } from './PredictionScatterplot';
+import { ErrorAnalysis } from './ErrorAnalysis';
 import { THEME_COLORS } from '../../utils/colors';
 
 export function TrainTab() {
@@ -219,6 +220,12 @@ export function TrainTab() {
               />
             </div>
           </div>
+
+          {/* Error Analysis */}
+          <ErrorAnalysis
+            trainPredictions={trainPredictions}
+            valPredictions={valPredictions}
+          />
 
         </div>
       </div>
