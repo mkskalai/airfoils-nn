@@ -115,33 +115,76 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
   const canStop = trainingStatus === 'training' || trainingStatus === 'paused';
   const canReset = trainingStatus !== 'idle';
 
-  const trainButtonJSX = (
-    <div className="space-y-2">
+  const trainingControlsJSX = (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <button
+          onClick={onTrain}
+          disabled={!canTrain}
+          className="w-full py-3 bg-accent text-white text-base font-semibold rounded-lg
+                   hover:bg-accent/90 disabled:bg-gray-300 disabled:cursor-not-allowed
+                   transition-colors shadow-lg shadow-accent/20 flex items-center justify-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+          </svg>
+          {isPaused ? 'Resume Training' : 'Start Training'}
+        </button>
+        {!dataReady && (
+          <p className="text-xs text-amber-600 text-center">
+            Waiting for dataset to load...
+          </p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={onPause}
+          disabled={!canPause}
+          className="py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg
+                   border-2 border-gray-200 hover:border-yellow-400 hover:text-yellow-600
+                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          Pause
+        </button>
+
+        <button
+          onClick={onStop}
+          disabled={!canStop}
+          className="py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg
+                   border-2 border-gray-200 hover:border-red-400 hover:text-red-600
+                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+          </svg>
+          Stop
+        </button>
+      </div>
+
       <button
-        onClick={onTrain}
-        disabled={!canTrain}
-        className="w-full py-3 bg-accent text-white text-base font-semibold rounded-lg
-                 hover:bg-accent/90 disabled:bg-gray-300 disabled:cursor-not-allowed
-                 transition-colors shadow-lg shadow-accent/20 flex items-center justify-center gap-2"
+        onClick={onReset}
+        disabled={!canReset}
+        className="w-full py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg
+                 border-2 border-gray-200 hover:border-red-300 hover:text-red-600
+                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
       >
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
-        {isPaused ? 'Resume Training' : 'Start Training'}
+        Reset Model
       </button>
-      {!dataReady && (
-        <p className="text-xs text-amber-600 text-center">
-          Waiting for dataset to load...
-        </p>
-      )}
     </div>
   );
 
   return (
     <div className="space-y-6">
-      {/* Top Train Button */}
+      {/* Top Training Controls */}
       <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-        {trainButtonJSX}
+        {trainingControlsJSX}
       </section>
 
       {/* Normalization Section */}
@@ -581,57 +624,13 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
         </div>
       </section>
 
-      {/* Control Buttons */}
+      {/* Training Controls */}
       <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
           <span className="w-6 h-6 rounded bg-accent/10 text-accent flex items-center justify-center text-sm font-bold">5</span>
           Training Controls
         </h3>
-
-        <div className="space-y-3">
-          {trainButtonJSX}
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={onPause}
-              disabled={!canPause}
-              className="py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg
-                       border-2 border-gray-200 hover:border-yellow-400 hover:text-yellow-600
-                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              Pause
-            </button>
-
-            <button
-              onClick={onStop}
-              disabled={!canStop}
-              className="py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg
-                       border-2 border-gray-200 hover:border-red-400 hover:text-red-600
-                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
-              </svg>
-              Stop
-            </button>
-          </div>
-
-          <button
-            onClick={onReset}
-            disabled={!canReset}
-            className="w-full py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg
-                     border-2 border-gray-200 hover:border-red-300 hover:text-red-600
-                     disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Reset Model
-          </button>
-        </div>
+        {trainingControlsJSX}
       </section>
     </div>
   );
