@@ -6,6 +6,7 @@ import {
   trainModel,
   createTrainingController,
   predict,
+  getModelWeights,
   type TrainingController,
 } from '../utils/model';
 import { getFeatureMatrix, getTargetVector, denormalizeValue, trainValidationSplit } from '../utils/data';
@@ -22,6 +23,7 @@ export function useTraining() {
     setCurrentEpoch,
     setTrainingStatus,
     setPredictions,
+    setNetworkWeights,
     resetModel,
   } = useModelStore();
 
@@ -96,37 +98,45 @@ export function useTraining() {
             const shouldUpdate = epoch % updateInterval === 0 || isLastEpoch;
 
             if (shouldUpdate) {
-              const trainPreds = predict(model, trainX);
-              const valPreds = predict(model, valX);
+              // Defer heavy visualization updates to not block training
+              // Using requestAnimationFrame to yield to the browser
+              requestAnimationFrame(() => {
+                const trainPreds = predict(model, trainX);
+                const valPreds = predict(model, valX);
 
-              // Denormalize predictions and ground truth back to original scale
-              // so metrics (R², RMSE) reflect real dB values
-              const denorm = (val: number) => {
-                if (!targetStats) return val;
-                return denormalizeValue(val, targetStats, targetNormConfig.type);
-              };
+                // Denormalize predictions and ground truth back to original scale
+                // so metrics (R², RMSE) reflect real dB values
+                const denorm = (val: number) => {
+                  if (!targetStats) return val;
+                  return denormalizeValue(val, targetStats, targetNormConfig.type);
+                };
 
-              const trainPredictions: PredictionPoint[] = trainY.map((gt, i) => ({
-                groundTruth: denorm(gt),
-                predicted: denorm(trainPreds[i]),
-                frequency: rawTrain[i].frequency,
-                angleOfAttack: rawTrain[i].angleOfAttack,
-                chordLength: rawTrain[i].chordLength,
-                freeStreamVelocity: rawTrain[i].freeStreamVelocity,
-                suctionSideDisplacementThickness: rawTrain[i].suctionSideDisplacementThickness,
-              }));
+                const trainPredictions: PredictionPoint[] = trainY.map((gt, i) => ({
+                  groundTruth: denorm(gt),
+                  predicted: denorm(trainPreds[i]),
+                  frequency: rawTrain[i].frequency,
+                  angleOfAttack: rawTrain[i].angleOfAttack,
+                  chordLength: rawTrain[i].chordLength,
+                  freeStreamVelocity: rawTrain[i].freeStreamVelocity,
+                  suctionSideDisplacementThickness: rawTrain[i].suctionSideDisplacementThickness,
+                }));
 
-              const valPredictions: PredictionPoint[] = valY.map((gt, i) => ({
-                groundTruth: denorm(gt),
-                predicted: denorm(valPreds[i]),
-                frequency: rawVal[i].frequency,
-                angleOfAttack: rawVal[i].angleOfAttack,
-                chordLength: rawVal[i].chordLength,
-                freeStreamVelocity: rawVal[i].freeStreamVelocity,
-                suctionSideDisplacementThickness: rawVal[i].suctionSideDisplacementThickness,
-              }));
+                const valPredictions: PredictionPoint[] = valY.map((gt, i) => ({
+                  groundTruth: denorm(gt),
+                  predicted: denorm(valPreds[i]),
+                  frequency: rawVal[i].frequency,
+                  angleOfAttack: rawVal[i].angleOfAttack,
+                  chordLength: rawVal[i].chordLength,
+                  freeStreamVelocity: rawVal[i].freeStreamVelocity,
+                  suctionSideDisplacementThickness: rawVal[i].suctionSideDisplacementThickness,
+                }));
 
-              setPredictions(trainPredictions, valPredictions);
+                setPredictions(trainPredictions, valPredictions);
+
+                // Extract and update network weights for visualization
+                const weights = getModelWeights(model);
+                setNetworkWeights(weights);
+              });
             }
           },
           onTrainingEnd: () => {
@@ -161,6 +171,7 @@ export function useTraining() {
     setCurrentEpoch,
     setTrainingStatus,
     setPredictions,
+    setNetworkWeights,
     resetModel,
   ]);
 

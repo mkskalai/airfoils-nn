@@ -18,10 +18,11 @@ export function NetworkPreview() {
   const { config } = useModelStore();
 
   const { layers, connections, width, height } = useMemo(() => {
-    const padding = 40;
-    const nodeRadius = 12;
-    const layerGap = 100;
-    const nodeGap = 30;
+    // Match NetworkViz dimensions
+    const padding = { top: 50, right: 60, bottom: 50, left: 60 };
+    const nodeRadius = 24;
+    const layerGap = 160;
+    const nodeGap = 20;
 
     // Build layer structure
     const layerSizes = [
@@ -31,14 +32,14 @@ export function NetworkPreview() {
     ];
 
     const maxNodes = Math.max(...layerSizes);
-    const calculatedHeight = Math.max(280, maxNodes * (nodeRadius * 2 + nodeGap) + padding * 2);
-    const calculatedWidth = layerSizes.length * layerGap + padding * 2;
+    const calculatedHeight = Math.max(400, maxNodes * (nodeRadius * 2 + nodeGap) + padding.top + padding.bottom);
+    const calculatedWidth = layerSizes.length * layerGap + padding.left + padding.right;
 
     const layers: Layer[] = [];
 
     // Create layers
     layerSizes.forEach((nodeCount, layerIndex) => {
-      const x = padding + layerIndex * layerGap;
+      const x = padding.left + layerIndex * layerGap;
       const layerHeight = nodeCount * (nodeRadius * 2 + nodeGap) - nodeGap;
       const startY = (calculatedHeight - layerHeight) / 2;
 
@@ -141,8 +142,8 @@ export function NetworkPreview() {
                 x2={conn.x2}
                 y2={conn.y2}
                 stroke="#e0e0e0"
-                strokeWidth={1}
-                opacity={0.5}
+                strokeWidth={2}
+                opacity={0.6}
               />
             ))}
           </g>
@@ -155,7 +156,7 @@ export function NetworkPreview() {
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={12}
+                    r={24}
                     fill={
                       layerIndex === 0
                         ? '#03a9f4' // Input: accent
@@ -164,7 +165,7 @@ export function NetworkPreview() {
                         : '#0d47a1' // Hidden: primary
                     }
                     stroke="white"
-                    strokeWidth={2}
+                    strokeWidth={3}
                     className="drop-shadow-sm"
                   />
                   {node.label && (
@@ -173,11 +174,11 @@ export function NetworkPreview() {
                       y={node.y}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      fontSize={node.label.startsWith('+') ? 8 : 7}
+                      fontSize={node.label.startsWith('+') ? 10 : 11}
                       fill="white"
                       fontWeight="bold"
                     >
-                      {node.label.startsWith('+') ? node.label : node.label.substring(0, 3)}
+                      {node.label.startsWith('+') ? node.label : node.label.substring(0, 4)}
                     </text>
                   )}
                 </g>
@@ -186,9 +187,9 @@ export function NetworkPreview() {
               {/* Layer label */}
               <text
                 x={layer.nodes[0]?.x ?? 0}
-                y={height - 12}
+                y={height - 15}
                 textAnchor="middle"
-                fontSize={10}
+                fontSize={13}
                 fill="#757575"
                 fontWeight="500"
               >
@@ -199,9 +200,9 @@ export function NetworkPreview() {
               {layer.activation && (
                 <text
                   x={layer.nodes[0]?.x ?? 0}
-                  y={20}
+                  y={25}
                   textAnchor="middle"
-                  fontSize={9}
+                  fontSize={12}
                   fill="#9e9e9e"
                 >
                   {layer.activation}

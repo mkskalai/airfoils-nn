@@ -4,13 +4,14 @@ import { useDataStore } from '../../stores/dataStore';
 import { useTraining } from '../../hooks/useTraining';
 import { ConfigPanel } from './ConfigPanel';
 import { NetworkPreview } from './NetworkPreview';
+import { NetworkViz } from './NetworkViz';
 import { LossChart } from './LossChart';
 import { PredictionScatterplot } from './PredictionScatterplot';
 import { ErrorAnalysis } from './ErrorAnalysis';
 import { THEME_COLORS } from '../../utils/colors';
 
 export function TrainTab() {
-  const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss, trainPredictions, valPredictions } = useModelStore();
+  const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss, trainPredictions, valPredictions, networkWeights } = useModelStore();
   const { trainData, validationData } = useDataStore();
   const { startTraining, pauseTraining, resumeTraining, stopTraining, reset } = useTraining();
 
@@ -76,8 +77,8 @@ export function TrainTab() {
 
         {/* Right Column: Preview and Status */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Network Preview */}
-          <NetworkPreview />
+          {/* Network Preview (before training) or Network Weights Viz (during/after training) */}
+          {networkWeights ? <NetworkViz /> : <NetworkPreview />}
 
           {/* Training Status Panel */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">

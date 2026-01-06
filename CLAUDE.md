@@ -49,7 +49,8 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 
 **Training Tab** (`src/components/train/`):
 - `ConfigPanel.tsx` - Normalization, architecture, hyperparameters, regularization
-- `NetworkPreview.tsx` - Visual preview of network architecture
+- `NetworkPreview.tsx` - Visual preview of network architecture (shown before training)
+- `NetworkViz.tsx` - D3.js weight visualization with color/width encoding (shown during/after training)
 - `LossChart.tsx` - Real-time training/validation loss chart (D3.js)
 - `PredictionScatterplot.tsx` - GT vs Predicted visualization with R², RMSE (original dB scale)
 - `ErrorAnalysis.tsx` - Residual histogram, error metrics (MAE, RMSE, R², within-threshold %)
@@ -75,5 +76,6 @@ See `PLAN.md` for detailed work packages. Current status:
 - ✅ WP1-6: Setup, Data Layer, Explore Tab, Config UI, Training, Loss Chart
 - ✅ WP6.5: GT vs Predicted Scatterplots (with denormalized values)
 - ✅ WP7: Error Analysis (residual histogram, error metrics, diagnostics)
-- 🔲 WP8-11: Network Viz, Prediction UI, Airfoil Viz, Polish
+- ✅ WP8: Network Architecture Visualization (weight visualization with D3.js)
+- 🔲 WP9-11: Prediction UI, Airfoil Viz, Polish
 - 🔲 WP12: PCA Analysis (Explore)

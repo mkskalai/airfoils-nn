@@ -19,6 +19,15 @@ export interface PredictionPoint {
   suctionSideDisplacementThickness: number;
 }
 
+// Layer weights: weights matrix and bias vector
+export interface LayerWeights {
+  weights: number[][]; // [inputSize][outputSize] - weights from input to output neurons
+  biases: number[]; // [outputSize] - bias for each output neuron
+}
+
+// Network weights for all layers
+export type NetworkWeights = LayerWeights[];
+
 interface ModelState {
   model: tf.Sequential | null;
   config: ModelConfig;
@@ -29,6 +38,7 @@ interface ModelState {
   trainPredictions: PredictionPoint[];
   valPredictions: PredictionPoint[];
   predictionUpdateInterval: number;
+  networkWeights: NetworkWeights | null;
 }
 
 interface ModelActions {
@@ -41,6 +51,7 @@ interface ModelActions {
   setBestValLoss: (loss: number | null) => void;
   setPredictions: (train: PredictionPoint[], val: PredictionPoint[]) => void;
   setPredictionUpdateInterval: (interval: number) => void;
+  setNetworkWeights: (weights: NetworkWeights | null) => void;
   resetModel: () => void;
   updateLayerConfig: (index: number, config: Partial<LayerConfig>) => void;
   addLayer: () => void;
@@ -81,6 +92,7 @@ const initialState: ModelState = {
   trainPredictions: [],
   valPredictions: [],
   predictionUpdateInterval: 10,
+  networkWeights: null,
 };
 
 export const useModelStore = create<ModelStore>((set, get) => ({
@@ -114,6 +126,8 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
   setPredictionUpdateInterval: (interval) => set({ predictionUpdateInterval: interval }),
 
+  setNetworkWeights: (weights) => set({ networkWeights: weights }),
+
   resetModel: () => {
     const { model } = get();
     if (model) {
@@ -127,6 +141,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       bestValLoss: null,
       trainPredictions: [],
       valPredictions: [],
+      networkWeights: null,
     });
   },
 
