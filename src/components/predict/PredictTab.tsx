@@ -8,6 +8,7 @@ import { normalizeValue, denormalizeValue } from '../../utils/data';
 import { formatValue } from '../../utils/colors';
 import { InputForm } from './InputForm';
 import { PointSelector } from './PointSelector';
+import { AirfoilViz } from './AirfoilViz';
 
 type FeatureInputs = Record<keyof Omit<DataPoint, 'soundPressureLevel'>, number>;
 
@@ -281,6 +282,21 @@ export function PredictTab() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Airfoil Visualization */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="text-xl">✈️</span>
+              Airfoil Configuration
+            </h3>
+            <AirfoilViz
+              chordLength={inputValues.chordLength}
+              angleOfAttack={inputValues.angleOfAttack}
+              velocity={inputValues.freeStreamVelocity}
+              width={360}
+              height={240}
+            />
           </div>
 
           {/* Nearest Neighbors */}

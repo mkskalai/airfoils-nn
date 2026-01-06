@@ -65,6 +65,7 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - `PredictTab.tsx` - Main prediction interface with state management
 - `InputForm.tsx` - Slider+number inputs for 5 features with validation
 - `PointSelector.tsx` - Interactive scatterplot for selecting data points
+- `AirfoilViz.tsx` - 2D NACA 0012 airfoil visualization (D3.js, shows chord, angle of attack, velocity)
 
 ## Theme Colors
 
@@ -83,5 +84,6 @@ See `PLAN.md` for detailed work packages. Current status:
 - ✅ WP7: Error Analysis (residual histogram, error metrics, diagnostics)
 - ✅ WP8: Network Architecture Visualization (weight visualization with D3.js)
 - ✅ WP9: Prediction Interface (input form, point selector, history, nearest neighbors)
-- 🔲 WP10-11: Airfoil Viz, Polish
+- ✅ WP10: 2D Airfoil Visualization (NACA 0012 profile with angle of attack and velocity)
+- 🔲 WP11: Polish
 - 🔲 WP12: PCA Analysis (Explore)
