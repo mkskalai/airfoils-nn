@@ -6,7 +6,19 @@ import type {
   TrainingHistory,
   LayerConfig,
   DropoutMode,
+  DataPoint,
 } from '../types';
+
+// Predict tab types
+export type FeatureInputs = Record<keyof Omit<DataPoint, 'soundPressureLevel'>, number>;
+
+export interface PredictionHistoryItem {
+  id: number;
+  inputs: FeatureInputs;
+  prediction: number;
+  actualValue?: number;
+  timestamp: Date;
+}
 
 export interface PredictionPoint {
   groundTruth: number;
@@ -34,11 +46,20 @@ interface ModelState {
   trainingHistory: TrainingHistory[];
   currentEpoch: number;
   trainingStatus: TrainingStatus;
+  trainingError: string | null;
   bestValLoss: number | null;
   trainPredictions: PredictionPoint[];
   valPredictions: PredictionPoint[];
   predictionUpdateInterval: number;
   networkWeights: NetworkWeights | null;
+  // Predict tab state (persists across tab switches)
+  predictInputValues: FeatureInputs;
+  predictCurrentPrediction: number | null;
+  predictSelectedPointIndex: number | null;
+  predictHistory: PredictionHistoryItem[];
+  predictHistoryIdCounter: number;
+  predictXAxis: keyof DataPoint;
+  predictYAxis: keyof DataPoint;
 }
 
 interface ModelActions {
@@ -48,6 +69,7 @@ interface ModelActions {
   clearHistory: () => void;
   setCurrentEpoch: (epoch: number) => void;
   setTrainingStatus: (status: TrainingStatus) => void;
+  setTrainingError: (error: string | null) => void;
   setBestValLoss: (loss: number | null) => void;
   setPredictions: (train: PredictionPoint[], val: PredictionPoint[]) => void;
   setPredictionUpdateInterval: (interval: number) => void;
@@ -58,6 +80,14 @@ interface ModelActions {
   removeLayer: (index: number) => void;
   setDropoutMode: (mode: DropoutMode) => void;
   setGlobalDropout: (rate: number) => void;
+  // Predict tab actions
+  setPredictInputValues: (values: FeatureInputs) => void;
+  updatePredictInputValue: (key: keyof Omit<DataPoint, 'soundPressureLevel'>, value: number) => void;
+  setPredictCurrentPrediction: (prediction: number | null) => void;
+  setPredictSelectedPointIndex: (index: number | null) => void;
+  addPredictHistoryItem: (item: Omit<PredictionHistoryItem, 'id'>) => void;
+  clearPredictHistory: () => void;
+  setPredictAxes: (xAxis: keyof DataPoint, yAxis: keyof DataPoint) => void;
 }
 
 type ModelStore = ModelState & ModelActions;
@@ -82,17 +112,34 @@ const defaultConfig: ModelConfig = {
   globalDropout: 0,
 };
 
+const defaultPredictInputValues: FeatureInputs = {
+  frequency: 1000,
+  angleOfAttack: 5,
+  chordLength: 0.15,
+  freeStreamVelocity: 50,
+  suctionSideDisplacementThickness: 0.005,
+};
+
 const initialState: ModelState = {
   model: null,
   config: defaultConfig,
   trainingHistory: [],
   currentEpoch: 0,
   trainingStatus: 'idle',
+  trainingError: null,
   bestValLoss: null,
   trainPredictions: [],
   valPredictions: [],
   predictionUpdateInterval: 10,
   networkWeights: null,
+  // Predict tab initial state
+  predictInputValues: defaultPredictInputValues,
+  predictCurrentPrediction: null,
+  predictSelectedPointIndex: null,
+  predictHistory: [],
+  predictHistoryIdCounter: 0,
+  predictXAxis: 'frequency',
+  predictYAxis: 'angleOfAttack',
 };
 
 export const useModelStore = create<ModelStore>((set, get) => ({
@@ -117,6 +164,8 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
   setTrainingStatus: (status) => set({ trainingStatus: status }),
 
+  setTrainingError: (error) => set({ trainingError: error }),
+
   setBestValLoss: (loss) => set({ bestValLoss: loss }),
 
   setPredictions: (train, val) => set({
@@ -138,6 +187,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       trainingHistory: [],
       currentEpoch: 0,
       trainingStatus: 'idle',
+      trainingError: null,
       bestValLoss: null,
       trainPredictions: [],
       valPredictions: [],
@@ -172,4 +222,28 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   setGlobalDropout: (rate) => set((state) => ({
     config: { ...state.config, globalDropout: rate },
   })),
+
+  // Predict tab actions
+  setPredictInputValues: (values) => set({ predictInputValues: values }),
+
+  updatePredictInputValue: (key, value) => set((state) => ({
+    predictInputValues: { ...state.predictInputValues, [key]: value },
+    predictSelectedPointIndex: null, // Clear selection when manually editing
+  })),
+
+  setPredictCurrentPrediction: (prediction) => set({ predictCurrentPrediction: prediction }),
+
+  setPredictSelectedPointIndex: (index) => set({ predictSelectedPointIndex: index }),
+
+  addPredictHistoryItem: (item) => set((state) => ({
+    predictHistory: [
+      { ...item, id: state.predictHistoryIdCounter },
+      ...state.predictHistory,
+    ].slice(0, 20), // Keep last 20
+    predictHistoryIdCounter: state.predictHistoryIdCounter + 1,
+  })),
+
+  clearPredictHistory: () => set({ predictHistory: [] }),
+
+  setPredictAxes: (xAxis, yAxis) => set({ predictXAxis: xAxis, predictYAxis: yAxis }),
 }));

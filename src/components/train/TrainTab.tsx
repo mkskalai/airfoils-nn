@@ -11,7 +11,7 @@ import { ErrorAnalysis } from './ErrorAnalysis';
 import { THEME_COLORS } from '../../utils/colors';
 
 export function TrainTab() {
-  const { config, trainingStatus, currentEpoch, trainingHistory, bestValLoss, trainPredictions, valPredictions, networkWeights } = useModelStore();
+  const { config, trainingStatus, trainingError, currentEpoch, trainingHistory, bestValLoss, trainPredictions, valPredictions, networkWeights } = useModelStore();
   const { trainData, validationData } = useDataStore();
   const { startTraining, pauseTraining, resumeTraining, stopTraining, reset } = useTraining();
 
@@ -62,10 +62,10 @@ export function TrainTab() {
   const latestLoss = trainingHistory.length > 0 ? trainingHistory[trainingHistory.length - 1] : null;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Column: Configuration Panel */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-4 sm:space-y-6">
           <ConfigPanel
             onTrain={handleTrain}
             onPause={handlePause}
@@ -76,24 +76,24 @@ export function TrainTab() {
         </div>
 
         {/* Right Column: Preview and Status */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Network Preview (before training) or Network Weights Viz (during/after training) */}
           {networkWeights ? <NetworkViz /> : <NetworkPreview />}
 
           {/* Training Status Panel */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               Training Status
             </h3>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               {/* Status Badge */}
-              <div className="col-span-2 md:col-span-1">
-                <div className="text-sm text-gray-500 mb-1">Status</div>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${statusConfig[trainingStatus].color}`}>
+              <div className="col-span-1 sm:col-span-1">
+                <div className="text-xs sm:text-sm text-gray-500 mb-1">Status</div>
+                <span className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium ${statusConfig[trainingStatus].color}`}>
                   <span>{statusConfig[trainingStatus].icon}</span>
                   {statusConfig[trainingStatus].label}
                 </span>
@@ -101,24 +101,24 @@ export function TrainTab() {
 
               {/* Progress */}
               <div>
-                <div className="text-sm text-gray-500 mb-1">Epoch</div>
-                <div className="text-xl font-semibold text-gray-800">
-                  {currentEpoch} <span className="text-sm text-gray-400">/ {config.epochs}</span>
+                <div className="text-xs sm:text-sm text-gray-500 mb-1">Epoch</div>
+                <div className="text-lg sm:text-xl font-semibold text-gray-800">
+                  {currentEpoch} <span className="text-xs sm:text-sm text-gray-400">/ {config.epochs}</span>
                 </div>
               </div>
 
               {/* Current Loss */}
               <div>
-                <div className="text-sm text-gray-500 mb-1">Train Loss</div>
-                <div className="text-xl font-mono font-semibold text-gray-800">
+                <div className="text-xs sm:text-sm text-gray-500 mb-1">Train Loss</div>
+                <div className="text-lg sm:text-xl font-mono font-semibold text-gray-800">
                   {latestLoss ? latestLoss.loss.toFixed(4) : '—'}
                 </div>
               </div>
 
               {/* Best Val Loss */}
               <div>
-                <div className="text-sm text-gray-500 mb-1">Best Val Loss</div>
-                <div className="text-xl font-mono font-semibold text-green-600">
+                <div className="text-xs sm:text-sm text-gray-500 mb-1">Best Val Loss</div>
+                <div className="text-lg sm:text-xl font-mono font-semibold text-green-600">
                   {bestValLoss !== null ? bestValLoss.toFixed(4) : '—'}
                 </div>
               </div>
@@ -141,31 +141,46 @@ export function TrainTab() {
                 <span>100%</span>
               </div>
             </div>
+
+            {/* Error Message */}
+            {trainingStatus === 'error' && trainingError && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h4 className="text-sm font-semibold text-red-800">Training Error</h4>
+                    <p className="text-sm text-red-700 mt-1">{trainingError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Loss Chart Placeholder */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
               </svg>
               Training History
             </h3>
 
             {/* Loss chart with mini stats */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Mini loss display */}
               {trainingHistory.length > 0 && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-accent/5 rounded-lg">
-                    <div className="text-sm text-gray-500 mb-1">Training Loss</div>
-                    <div className="text-2xl font-mono font-bold text-accent">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-3 sm:p-4 bg-accent/5 rounded-lg">
+                    <div className="text-xs sm:text-sm text-gray-500 mb-1">Training Loss</div>
+                    <div className="text-lg sm:text-xl md:text-2xl font-mono font-bold text-accent">
                       {latestLoss?.loss.toFixed(6)}
                     </div>
                   </div>
-                  <div className="p-4 bg-warm/5 rounded-lg">
-                    <div className="text-sm text-gray-500 mb-1">Validation Loss</div>
-                    <div className="text-2xl font-mono font-bold text-warm">
+                  <div className="p-3 sm:p-4 bg-warm/5 rounded-lg">
+                    <div className="text-xs sm:text-sm text-gray-500 mb-1">Validation Loss</div>
+                    <div className="text-lg sm:text-xl md:text-2xl font-mono font-bold text-warm">
                       {latestLoss?.valLoss.toFixed(6)}
                     </div>
                   </div>
@@ -184,13 +199,13 @@ export function TrainTab() {
           </div>
 
           {/* Prediction Scatterplots */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
               <div className="flex items-center gap-2 mb-2">
-                <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="text-sm text-gray-500">
+                <span className="text-xs sm:text-sm text-gray-500">
                   {trainPredictions.length > 0 ? `${trainPredictions.length} samples` : ''}
                 </span>
               </div>
@@ -203,12 +218,12 @@ export function TrainTab() {
               />
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
               <div className="flex items-center gap-2 mb-2">
-                <svg className="w-5 h-5 text-warm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-warm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="text-sm text-gray-500">
+                <span className="text-xs sm:text-sm text-gray-500">
                   {valPredictions.length > 0 ? `${valPredictions.length} samples` : ''}
                 </span>
               </div>

@@ -22,6 +22,7 @@ export function useTraining() {
     clearHistory,
     setCurrentEpoch,
     setTrainingStatus,
+    setTrainingError,
     setPredictions,
     setNetworkWeights,
     resetModel,
@@ -30,16 +31,46 @@ export function useTraining() {
   const { trainData, validationData, rawData, stats, normalizationConfig, validationSplit } = useDataStore();
 
   const startTraining = useCallback(async () => {
+    // Clear any previous errors
+    setTrainingError(null);
+
     // Validate data
     if (trainData.length === 0 || validationData.length === 0) {
-      console.error('No data available for training');
+      setTrainingError('No data available for training. Please ensure the dataset is loaded.');
       setTrainingStatus('error');
       return;
     }
 
     // Validate config
     if (config.hiddenLayers.length === 0) {
-      console.error('At least one hidden layer is required');
+      setTrainingError('At least one hidden layer is required. Add a layer in the Network Architecture section.');
+      setTrainingStatus('error');
+      return;
+    }
+
+    // Validate layer neurons
+    const invalidLayers = config.hiddenLayers.filter((layer) => layer.neurons < 1);
+    if (invalidLayers.length > 0) {
+      setTrainingError('All layers must have at least 1 neuron.');
+      setTrainingStatus('error');
+      return;
+    }
+
+    // Validate hyperparameters
+    if (config.learningRate <= 0 || config.learningRate > 1) {
+      setTrainingError('Learning rate must be between 0 and 1.');
+      setTrainingStatus('error');
+      return;
+    }
+
+    if (config.epochs < 1) {
+      setTrainingError('Number of epochs must be at least 1.');
+      setTrainingStatus('error');
+      return;
+    }
+
+    if (config.batchSize < 1) {
+      setTrainingError('Batch size must be at least 1.');
       setTrainingStatus('error');
       return;
     }
@@ -145,6 +176,15 @@ export function useTraining() {
           },
           onTrainingError: (error) => {
             console.error('Training error:', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            // Check for common TensorFlow.js errors
+            if (errorMessage.includes('NaN') || errorMessage.includes('Infinity')) {
+              setTrainingError('Training produced NaN/Infinity values. Try reducing the learning rate or adding regularization.');
+            } else if (errorMessage.includes('memory') || errorMessage.includes('OOM')) {
+              setTrainingError('Out of memory. Try reducing batch size or model complexity.');
+            } else {
+              setTrainingError(`Training failed: ${errorMessage}`);
+            }
             setTrainingStatus('error');
             controllerRef.current = null;
           },
@@ -153,6 +193,8 @@ export function useTraining() {
       );
     } catch (error) {
       console.error('Training failed:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setTrainingError(`Failed to start training: ${errorMessage}`);
       setTrainingStatus('error');
       controllerRef.current = null;
     }
@@ -170,6 +212,7 @@ export function useTraining() {
     clearHistory,
     setCurrentEpoch,
     setTrainingStatus,
+    setTrainingError,
     setPredictions,
     setNetworkWeights,
     resetModel,
