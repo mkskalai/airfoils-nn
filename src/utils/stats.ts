@@ -360,6 +360,41 @@ function dotProduct(a: number[], b: number[]): number {
 }
 
 /**
+ * Calculate correlation matrix for arbitrary feature arrays
+ * Used by the feature store for dynamic feature selection
+ */
+export function dynamicCorrelationMatrix(
+  featureArrays: { id: string; name: string; values: number[] }[]
+): {
+  matrix: number[][];
+  featureIds: string[];
+  featureNames: string[];
+} {
+  const n = featureArrays.length;
+  const matrix: number[][] = Array(n)
+    .fill(null)
+    .map(() => Array(n).fill(0));
+
+  const featureIds = featureArrays.map(f => f.id);
+  const featureNames = featureArrays.map(f => f.name);
+
+  // Calculate pairwise correlations
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (i === j) {
+        matrix[i][j] = 1;
+      } else if (j > i) {
+        const corr = pearsonCorrelation(featureArrays[i].values, featureArrays[j].values);
+        matrix[i][j] = corr;
+        matrix[j][i] = corr;
+      }
+    }
+  }
+
+  return { matrix, featureIds, featureNames };
+}
+
+/**
  * Calculate kernel density estimate
  */
 export function kernelDensityEstimate(

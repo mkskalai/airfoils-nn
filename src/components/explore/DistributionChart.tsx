@@ -1,9 +1,10 @@
 import { useRef, useEffect, useMemo } from 'react';
 import * as d3 from 'd3';
-import type { DataPoint, ColumnStats } from '../../types';
+import type { DataPoint, ColumnStats, FeatureDefinition } from '../../types';
 import { FEATURE_LABELS } from '../../types';
 import { histogram, kernelDensityEstimate } from '../../utils/stats';
 import { THEME_COLORS, formatValue } from '../../utils/colors';
+import { TARGET_FEATURE_ID } from '../../stores/featureStore';
 
 interface DistributionChartProps {
   data: DataPoint[];
@@ -13,6 +14,8 @@ interface DistributionChartProps {
   height?: number;
   showKDE?: boolean;
   brushedIndices?: Set<number>;
+  /** Optional feature definition for transformed/PCA features */
+  featureDefinition?: FeatureDefinition;
 }
 
 const MARGIN = { top: 25, right: 15, bottom: 45, left: 55 };
@@ -26,6 +29,7 @@ export function DistributionChart({
   height: propHeight,
   showKDE = true,
   brushedIndices,
+  featureDefinition,
 }: DistributionChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -34,9 +38,18 @@ export function DistributionChart({
   const innerWidth = width - MARGIN.left - MARGIN.right;
   const innerHeight = height - MARGIN.top - MARGIN.bottom;
 
+  // Get feature values - use featureDefinition if available, otherwise use data
+  const getValues = useMemo(() => {
+    if (featureDefinition && featureDefinition.values.length > 0) {
+      return featureDefinition.values;
+    }
+    // Fall back to DataPoint extraction for original features
+    return data.map(d => d[feature]);
+  }, [featureDefinition, data, feature]);
+
   // Calculate histogram and KDE
   const { bins, kde, xScale, yScale } = useMemo(() => {
-    const values = data.map(d => d[feature]);
+    const values = getValues;
     const bins = histogram(values, NUM_BINS, [stats.min, stats.max]);
     const maxCount = Math.max(...bins.map(b => b.count));
 
@@ -52,18 +65,17 @@ export function DistributionChart({
     const kde = showKDE ? kernelDensityEstimate(values, undefined, 100) : null;
 
     return { bins, kde, xScale, yScale };
-  }, [data, feature, stats, innerWidth, innerHeight, showKDE]);
+  }, [getValues, stats, innerWidth, innerHeight, showKDE]);
 
   // Calculate brushed histogram if there's a selection
   const brushedBins = useMemo(() => {
     if (!brushedIndices || brushedIndices.size === 0) return null;
 
-    const brushedValues = data
-      .filter((_, i) => brushedIndices.has(i))
-      .map(d => d[feature]);
+    const values = getValues;
+    const brushedValues = values.filter((_, i) => brushedIndices.has(i));
 
     return histogram(brushedValues, NUM_BINS, [stats.min, stats.max]);
-  }, [data, feature, stats, brushedIndices]);
+  }, [getValues, stats, brushedIndices]);
 
   useEffect(() => {
     if (!svgRef.current || innerWidth <= 0 || innerHeight <= 0) return;
@@ -206,15 +218,40 @@ export function DistributionChart({
 
   }, [bins, brushedBins, kde, xScale, yScale, innerWidth, innerHeight, showKDE, stats]);
 
-  const isTarget = feature === 'soundPressureLevel';
+  // Determine feature info from definition or original feature key
+  const isTarget = featureDefinition
+    ? featureDefinition.id === TARGET_FEATURE_ID
+    : feature === 'soundPressureLevel';
+
+  const featureName = featureDefinition
+    ? featureDefinition.name
+    : FEATURE_LABELS[feature];
+
+  const featureType = featureDefinition?.type || 'original';
+
+  // Type badge colors
+  const typeBadgeColors = {
+    original: '',
+    transformed: 'bg-purple-100 text-purple-700',
+    pca: 'bg-green-100 text-green-700',
+  };
 
   return (
     <div className="bg-white rounded-lg p-3 border border-gray-100">
       <div className="flex items-center justify-between mb-2">
-        <h4 className={`text-base font-semibold ${isTarget ? 'text-warm' : 'text-gray-700'}`}>
-          {FEATURE_LABELS[feature]}
-          {isTarget && <span className="ml-2 text-sm bg-warm text-white px-2 py-0.5 rounded-full">Target</span>}
-        </h4>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h4 className={`text-base font-semibold ${isTarget ? 'text-warm' : 'text-gray-700'}`}>
+            {featureName}
+          </h4>
+          {isTarget && (
+            <span className="text-xs bg-warm text-white px-2 py-0.5 rounded-full">Target</span>
+          )}
+          {featureType !== 'original' && (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${typeBadgeColors[featureType]}`}>
+              {featureType === 'transformed' ? 'Transform' : 'PCA'}
+            </span>
+          )}
+        </div>
       </div>
 
       <svg ref={svgRef} width={width} height={height} />

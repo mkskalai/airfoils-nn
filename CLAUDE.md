@@ -57,9 +57,16 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - `ResidualVsFeature.tsx` - Residual vs feature scatterplots (5 plots, one per input feature)
 
 **Explore Tab** (`src/components/explore/`):
-- `CorrelationHeatmap.tsx` - 6x6 Pearson correlation matrix
-- `DistributionChart.tsx` - Histograms with KDE overlay
+- `CorrelationHeatmap.tsx` - Dynamic NxN Pearson correlation matrix (updates with feature selection)
+- `DistributionChart.tsx` - Histograms with KDE overlay (supports transformed/PCA features)
 - `Scatterplot.tsx` - Interactive feature scatterplot
+- `FeatureStatsTable.tsx` - Sortable statistics table for all features
+- `FeatureEngineering.tsx` - Transform and PCA feature creation UI
+- `PCAVisualization.tsx` - Variance explained and loadings charts
+
+**Common Components** (`src/components/common/`):
+- `FeatureSelector.tsx` - Multi-select dropdown for dynamic feature selection
+- `TabNavigation.tsx` - Tab navigation component
 
 **Predict Tab** (`src/components/predict/`):
 - `PredictTab.tsx` - Main prediction interface with state management
@@ -86,4 +93,10 @@ See `PLAN.md` for detailed work packages. Current status:
 - ✅ WP9: Prediction Interface (input form, point selector, history, nearest neighbors)
 - ✅ WP10: 2D Airfoil Visualization (NACA 0012 profile with angle of attack and velocity)
 - ✅ WP11: Polish (error handling, responsive design, model validation, animations)
-- 🔲 WP12: PCA Analysis (Explore)
+- ✅ WP-FE: Feature Engineering (see PLAN_FEATURE_ENGINEERING.md)
+  - ✅ WP-FE1: Feature Store Foundation
+  - ✅ WP-FE2: PCA Implementation
+  - ✅ WP-FE3: Feature Engineering UI
+  - ✅ WP-FE4: PCA Visualizations
+  - ✅ WP-FE5: Dynamic Feature Selection for Plots
+  - 🔲 WP-FE6-9: Remaining enhancements (Pairwise Matrix, Training Integration, Log Scale, Downloads)

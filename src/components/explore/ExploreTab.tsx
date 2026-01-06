@@ -1,16 +1,21 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useDataStore } from '../../stores/dataStore';
+import { useFeatureStore, TARGET_FEATURE_ID } from '../../stores/featureStore';
 import { FEATURE_LABELS, type DataPoint } from '../../types';
 import { DATA_KEYS } from '../../utils/data';
 import { Scatterplot } from './Scatterplot';
 import { CorrelationHeatmap } from './CorrelationHeatmap';
 import { DistributionChart } from './DistributionChart';
 import { FeatureEngineering } from './FeatureEngineering';
+import { PCAVisualization } from './PCAVisualization';
+import { FeatureSelector } from '../common/FeatureSelector';
+import { FeatureStatsTable } from './FeatureStatsTable';
 
 type FeatureKey = keyof DataPoint;
 
 export function ExploreTab() {
   const { rawData, stats, isLoading, error } = useDataStore();
+  const { getAllFeatures, features } = useFeatureStore();
 
   // Scatterplot feature selection
   const [xFeature, setXFeature] = useState<FeatureKey>('frequency');
@@ -22,6 +27,23 @@ export function ExploreTab() {
   // KDE toggle
   const [showKDE, setShowKDE] = useState(true);
 
+  // Get all available feature IDs for initialization (including target)
+  const allFeatureIdsWithTarget = useMemo(() => {
+    const ids = getAllFeatures().map(f => f.id);
+    if (features[TARGET_FEATURE_ID]) {
+      ids.push(TARGET_FEATURE_ID);
+    }
+    return ids;
+  }, [getAllFeatures, features]);
+
+  // Per-section feature selection (controlled mode) - start null to detect uninitialized
+  const [corrFeatureIds, setCorrFeatureIds] = useState<string[] | null>(null);
+  const [distFeatureIds, setDistFeatureIds] = useState<string[] | null>(null);
+
+  // Effective feature IDs (use all features including target if not yet customized by user)
+  const effectiveCorrFeatureIds = corrFeatureIds ?? allFeatureIdsWithTarget;
+  const effectiveDistFeatureIds = distFeatureIds ?? allFeatureIdsWithTarget;
+
   // Container refs for measuring widths
   const scatterContainerRef = useRef<HTMLDivElement>(null);
   const corrContainerRef = useRef<HTMLDivElement>(null);
@@ -31,6 +53,22 @@ export function ExploreTab() {
   const [scatterWidth, setScatterWidth] = useState(600);
   const [corrWidth, setCorrWidth] = useState(600);
   const [distWidth, setDistWidth] = useState(350);
+
+  // Get selected features for distribution charts based on local state
+  const selectedFeaturesForDist = useMemo(() => {
+    return effectiveDistFeatureIds
+      .map(id => features[id])
+      .filter(Boolean);
+  }, [effectiveDistFeatureIds, features]);
+
+  // Calculate dynamic grid columns based on number of features
+  const gridColumns = useMemo(() => {
+    const count = selectedFeaturesForDist.length;
+    if (count <= 2) return 'grid-cols-1 md:grid-cols-2';
+    if (count <= 3) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+    if (count <= 4) return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
+    return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+  }, [selectedFeaturesForDist.length]);
 
   // Measure container widths on mount and resize using ResizeObserver
   useEffect(() => {
@@ -49,14 +87,18 @@ export function ExploreTab() {
       setCorrWidth(chartWidth);
 
       if (distContainerRef.current) {
-        // For the grid, calculate individual chart width for 3 columns
-        // Account for: outer container padding (p-4 = 32px), grid gaps (gap-4 = 16px × 2),
+        // For the grid, calculate individual chart width based on number of columns
+        const numCols = selectedFeaturesForDist.length <= 2 ? 2 :
+                       selectedFeaturesForDist.length <= 3 ? 3 :
+                       selectedFeaturesForDist.length <= 4 ? 4 : 4;
+
+        // Account for: outer container padding (p-4 = 32px), grid gaps (gap-4 = 16px per gap),
         // and each chart's internal padding (p-3 = 24px per chart)
         const containerWidth = distContainerRef.current.clientWidth - 32;
-        const cellWidth = Math.floor((containerWidth - 32) / 3);
+        const cellWidth = Math.floor((containerWidth - (numCols - 1) * 16) / numCols);
         // Subtract chart's internal p-3 padding (24px)
         const distChartWidth = cellWidth - 24;
-        setDistWidth(Math.max(distChartWidth, 200));
+        setDistWidth(Math.max(distChartWidth, 180));
       }
     };
 
@@ -75,7 +117,7 @@ export function ExploreTab() {
     });
 
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [selectedFeaturesForDist.length]);
 
   // Handle brush selection from scatterplot
   const handleBrush = useCallback((indices: Set<number>) => {
@@ -110,8 +152,8 @@ export function ExploreTab() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
             <h2 className="text-2xl font-semibold text-gray-800 mb-2">Data Exploration</h2>
             <p className="text-base text-gray-700">
               NASA Airfoil Self-Noise Dataset — Interactive visualizations for understanding feature relationships
@@ -141,6 +183,9 @@ export function ExploreTab() {
 
       {/* Feature Engineering Panel */}
       <FeatureEngineering />
+
+      {/* PCA Visualizations (shown after PCA is run) */}
+      <PCAVisualization />
 
       {/* Main visualization grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -192,19 +237,35 @@ export function ExploreTab() {
 
         {/* Correlation Heatmap Section */}
         <div ref={corrContainerRef} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">Correlation Matrix</h3>
-
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xl font-semibold text-gray-800">Correlation Matrix</h3>
+            <FeatureSelector
+              label="Features"
+              includeTarget={true}
+              selectedIds={effectiveCorrFeatureIds}
+              onChange={setCorrFeatureIds}
+            />
+          </div>
           <CorrelationHeatmap
-            data={rawData}
             width={corrWidth}
+            includeTarget={false}
+            featureIds={effectiveCorrFeatureIds}
           />
         </div>
       </div>
 
-      {/* Distribution Charts Section - Two Rows */}
+      {/* Distribution Charts Section */}
       <div ref={distContainerRef} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xl font-semibold text-gray-800">Feature Distributions</h3>
+          <div className="flex items-center gap-4">
+            <h3 className="text-xl font-semibold text-gray-800">Feature Distributions</h3>
+            <FeatureSelector
+              label="Features"
+              includeTarget={true}
+              selectedIds={effectiveDistFeatureIds}
+              onChange={setDistFeatureIds}
+            />
+          </div>
           <label className="flex items-center gap-2 text-base text-gray-700">
             <input
               type="checkbox"
@@ -216,73 +277,47 @@ export function ExploreTab() {
           </label>
         </div>
 
-        {/* Two rows of 3 charts each */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {DATA_KEYS.map((key) => (
-            <DistributionChart
-              key={key}
-              data={rawData}
-              feature={key}
-              stats={stats[key]}
-              width={distWidth}
-              showKDE={showKDE}
-              brushedIndices={brushedIndices}
-            />
-          ))}
-        </div>
+        {selectedFeaturesForDist.length === 0 ? (
+          <div className="text-gray-500 text-center py-12">
+            <div className="text-lg mb-2">No features selected</div>
+            <div className="text-sm">Use the Features selector to choose features for distribution analysis</div>
+          </div>
+        ) : (
+          <>
+            <div className={`grid ${gridColumns} gap-4`}>
+              {selectedFeaturesForDist.map((feature) => {
+                // Check if this is an original feature that exists in stats
+                const originalKey = feature.id as keyof typeof stats;
+                const featureStats = stats[originalKey];
 
-        <p className="text-base text-gray-700 mt-6">
-          Dashed blue line shows mean (μ). Orange line shows kernel density estimate (KDE).
-          {brushedIndices.size > 0 && ' Gray bars show all data, blue bars show selected points.'}
-        </p>
+                return (
+                  <DistributionChart
+                    key={feature.id}
+                    data={rawData}
+                    feature={feature.id as keyof DataPoint}
+                    stats={featureStats || feature.stats}
+                    width={distWidth}
+                    showKDE={showKDE}
+                    brushedIndices={brushedIndices}
+                    featureDefinition={feature}
+                  />
+                );
+              })}
+            </div>
+
+            <p className="text-base text-gray-700 mt-6">
+              Dashed blue line shows mean (μ). Orange line shows kernel density estimate (KDE).
+              {brushedIndices.size > 0 && ' Gray bars show all data, blue bars show selected points.'}
+            </p>
+          </>
+        )}
       </div>
 
       {/* Feature Statistics Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Feature Statistics</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-base">
-            <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Feature</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Min</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Max</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Mean</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Std Dev</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Range</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(stats).map(([key, value]) => (
-                <tr
-                  key={key}
-                  className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                    key === 'soundPressureLevel' ? 'bg-warm-light/30' : ''
-                  }`}
-                >
-                  <td className="py-3 px-4">
-                    <span className="font-medium text-gray-800">
-                      {FEATURE_LABELS[key as keyof typeof FEATURE_LABELS]}
-                    </span>
-                    {key === 'soundPressureLevel' && (
-                      <span className="ml-2 text-sm bg-warm text-white px-2 py-0.5 rounded-full">
-                        Target
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-700">{value.min.toFixed(3)}</td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-700">{value.max.toFixed(3)}</td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-700">{value.mean.toFixed(3)}</td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-700">{value.std.toFixed(3)}</td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-700">
-                    {(value.max - value.min).toFixed(3)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <FeatureStatsTable
+        includeTarget={true}
+        selectedOnly={false}
+      />
     </div>
   );
 }
