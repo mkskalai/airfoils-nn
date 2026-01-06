@@ -61,6 +61,11 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - `DistributionChart.tsx` - Histograms with KDE overlay
 - `Scatterplot.tsx` - Interactive feature scatterplot
 
+**Predict Tab** (`src/components/predict/`):
+- `PredictTab.tsx` - Main prediction interface with state management
+- `InputForm.tsx` - Slider+number inputs for 5 features with validation
+- `PointSelector.tsx` - Interactive scatterplot for selecting data points
+
 ## Theme Colors
 
 Custom TensorFlow Playground-inspired palette defined in `src/index.css`:
@@ -77,5 +82,6 @@ See `PLAN.md` for detailed work packages. Current status:
 - ✅ WP6.5: GT vs Predicted Scatterplots (with denormalized values)
 - ✅ WP7: Error Analysis (residual histogram, error metrics, diagnostics)
 - ✅ WP8: Network Architecture Visualization (weight visualization with D3.js)
-- 🔲 WP9-11: Prediction UI, Airfoil Viz, Polish
+- ✅ WP9: Prediction Interface (input form, point selector, history, nearest neighbors)
+- 🔲 WP10-11: Airfoil Viz, Polish
 - 🔲 WP12: PCA Analysis (Explore)
