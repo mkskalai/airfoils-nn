@@ -8,6 +8,7 @@ import {
   trainValidationSplit,
   createDefaultNormalizationConfig,
 } from '../utils/data';
+import { useFeatureStore } from './featureStore';
 
 interface DataState {
   rawData: DataPoint[];
@@ -79,6 +80,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
         stats,
         isLoading: false,
       });
+
+      // Initialize feature store with raw data
+      useFeatureStore.getState().initializeFromData(rawData);
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Unknown error',

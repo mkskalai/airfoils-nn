@@ -12,6 +12,8 @@
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",
     "d3": "^7.9.0",
+    "ml-matrix": "^6.12.1",
+    "ml-pca": "^4.1.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "zustand": "^5.0.9"

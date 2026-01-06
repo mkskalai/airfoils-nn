@@ -93,3 +93,8 @@ export const FEATURE_LABELS: Record<keyof DataPoint, string> = {
   suctionSideDisplacementThickness: 'Suction Side Displacement Thickness (m)',
   soundPressureLevel: 'Sound Pressure Level (dB)',
 };
+
+// Re-export feature store types for convenience
+export type { FeatureDefinition, FeatureType, PCAResult, FeatureStoreConfig } from '../stores/featureStore';
+export type { TransformType, TransformParams, FeatureStats } from '../utils/transforms';
+export type { PCAInput, PCAOutput } from '../utils/pca';

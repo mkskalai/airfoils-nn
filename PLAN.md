@@ -547,7 +547,45 @@ WP10 (Airfoil Viz)       ✅ DONE ←── 2D NACA 0012 visualization
 WP11 (Polish)            ✅ DONE ←── Error handling, responsive design, animations
     ↓
 WP12 (PCA Analysis) ←── Data exploration enhancement
+    ↓
+WP-FE (Feature Engineering) ✅ DONE ←── Transforms, PCA, target selection
 ```
+
+---
+
+### WP-FE: Feature Engineering (Explore Tab)
+**Status: ✅ DONE**
+
+#### Features Implemented:
+1. **Transforms** (`src/utils/transforms.ts`):
+   - Min-Max normalization
+   - Z-Score standardization
+   - Custom expressions (e.g., `log(x+1)`, `sqrt(x)`)
+   - Inverse expressions for custom transforms
+
+2. **PCA** (`src/utils/pca.ts`):
+   - Uses ml-pca library for correct eigendecomposition
+   - Variance explained ratios
+   - Save PC components as new features
+   - `scale: false` - users must manually transform features if scaling needed
+
+3. **Feature Store** (`src/stores/featureStore.ts`):
+   - Tracks original, transformed, and PCA features
+   - `getValidTargetFeatures()` returns features valid for network output
+
+4. **UI Components**:
+   - `TransformDialog.tsx` - Create transformed features
+   - `PCADialog.tsx` - Run PCA and save components
+   - `FeatureEngineering.tsx` - Main panel in Explore tab
+
+#### Important: Network Output Selection
+- **Only target-derived features can be used as network output**
+- Original target (Sound Pressure Level) is always valid
+- Transformed targets require invertible transform:
+  - Min-Max: ✅ auto-invertible
+  - Z-Score: ✅ auto-invertible
+  - Custom: ⚠️ requires `inverseExpression` field
+- Custom transforms without inverse **cannot** be selected as output
 
 ---
 

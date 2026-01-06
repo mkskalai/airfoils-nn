@@ -5,6 +5,7 @@ import { DATA_KEYS } from '../../utils/data';
 import { Scatterplot } from './Scatterplot';
 import { CorrelationHeatmap } from './CorrelationHeatmap';
 import { DistributionChart } from './DistributionChart';
+import { FeatureEngineering } from './FeatureEngineering';
 
 type FeatureKey = keyof DataPoint;
 
@@ -137,6 +138,9 @@ export function ExploreTab() {
           </div>
         )}
       </div>
+
+      {/* Feature Engineering Panel */}
+      <FeatureEngineering />
 
       {/* Main visualization grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
