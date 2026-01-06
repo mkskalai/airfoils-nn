@@ -77,18 +77,20 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
   // Get all potential source features (original + transformed, not PCA)
   const sourceFeatures = [...getOriginalFeatures(), ...getTransformedFeatures()];
 
-  const [selectedSourceId, setSelectedSourceId] = useState<string>(sourceFeatures[0]?.id || '');
+  const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
   const [transformType, setTransformType] = useState<TransformType>('minmax');
   const [customExpression, setCustomExpression] = useState('');
   const [inverseExpression, setInverseExpression] = useState('');
-  const [customName, setCustomName] = useState('');
+  const [customNames, setCustomNames] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [expressionError, setExpressionError] = useState<string | null>(null);
   const [inverseError, setInverseError] = useState<string | null>(null);
 
-  const selectedFeature = getFeature(selectedSourceId);
+  // For preview, show first selected feature
+  const previewSourceId = Array.from(selectedSourceIds)[0] || '';
+  const selectedFeature = getFeature(previewSourceId);
 
-  // Check if selected feature is target or derived from target (recursive)
+  // Check if any selected feature is target or derived from target (recursive)
   const isTargetTransform = useMemo(() => {
     const checkDerivedFromTarget = (featureId: string): boolean => {
       if (featureId === TARGET_FEATURE_ID) return true;
@@ -99,8 +101,42 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
       }
       return false;
     };
-    return selectedSourceId ? checkDerivedFromTarget(selectedSourceId) : false;
-  }, [selectedSourceId, getFeature]);
+    return Array.from(selectedSourceIds).some(id => checkDerivedFromTarget(id));
+  }, [selectedSourceIds, getFeature]);
+
+  // Generate default name for a feature + transform
+  const getDefaultName = (sourceId: string) => {
+    const feature = getFeature(sourceId);
+    if (!feature) return '';
+    const suffix = transformType === 'custom'
+      ? customExpression.slice(0, 10).replace(/[^a-zA-Z0-9]/g, '') || 'custom'
+      : transformType;
+    return `${feature.name}_${suffix}`;
+  };
+
+  // Handle feature toggle
+  const handleToggleFeature = (featureId: string) => {
+    const newSelected = new Set(selectedSourceIds);
+    if (newSelected.has(featureId)) {
+      newSelected.delete(featureId);
+      // Remove custom name
+      const newNames = { ...customNames };
+      delete newNames[featureId];
+      setCustomNames(newNames);
+    } else {
+      newSelected.add(featureId);
+    }
+    setSelectedSourceIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    setSelectedSourceIds(new Set(sourceFeatures.map(f => f.id)));
+  };
+
+  const handleClearAll = () => {
+    setSelectedSourceIds(new Set());
+    setCustomNames({});
+  };
 
   // Auto-fill inverse when expression changes to a known one
   useEffect(() => {
@@ -168,8 +204,8 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
   };
 
   const handleCreate = () => {
-    if (!selectedSourceId) {
-      setError('Please select a source feature');
+    if (selectedSourceIds.size === 0) {
+      setError('Please select at least one source feature');
       return;
     }
 
@@ -191,17 +227,26 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
     }
 
     const params = transformType === 'custom' ? customParams : undefined;
-    const result = addTransformedFeature(
-      selectedSourceId,
-      transformType,
-      params,
-      customName || undefined
-    );
+    const createdIds: string[] = [];
 
-    if (result) {
+    // Create transformed feature for each selected source
+    for (const sourceId of selectedSourceIds) {
+      const name = customNames[sourceId] || getDefaultName(sourceId);
+      const result = addTransformedFeature(
+        sourceId,
+        transformType,
+        params,
+        name
+      );
+      if (result) {
+        createdIds.push(result);
+      }
+    }
+
+    if (createdIds.length > 0) {
       onClose();
     } else {
-      setError('Failed to create feature');
+      setError('Failed to create features');
     }
   };
 
@@ -223,20 +268,42 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
 
         {/* Content */}
         <div className="p-4 space-y-4">
-          {/* Source Feature Selector */}
+          {/* Source Feature Multi-Selector */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Source Feature</label>
-            <select
-              value={selectedSourceId}
-              onChange={(e) => setSelectedSourceId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              {sourceFeatures.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-gray-700">
+                Source Features ({selectedSourceIds.size} selected)
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSelectAll}
+                  className="text-xs text-accent hover:underline"
+                >
+                  Select All
+                </button>
+                <button onClick={handleClearAll} className="text-xs text-gray-500 hover:underline">
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+              {sourceFeatures.map((feature) => (
+                <label
+                  key={feature.id}
+                  className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSourceIds.has(feature.id)}
+                    onChange={() => handleToggleFeature(feature.id)}
+                    className="rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                  <span className="truncate" title={feature.name}>
+                    {feature.name}
+                  </span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* Transform Type */}
@@ -357,24 +424,41 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
             </div>
           )}
 
-          {/* Custom Name (optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Custom Name <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              placeholder="Auto-generated if empty"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-          </div>
+          {/* Feature Names - shown when features are selected */}
+          {selectedSourceIds.size > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Output Names <span className="text-gray-400 font-normal">(adjust as needed)</span>
+              </label>
+              <div className="space-y-2 max-h-40 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                {Array.from(selectedSourceIds).map((sourceId) => {
+                  const feature = getFeature(sourceId);
+                  const defaultName = getDefaultName(sourceId);
+                  return (
+                    <div key={sourceId} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-24 truncate" title={feature?.name}>
+                        {feature?.name}:
+                      </span>
+                      <input
+                        type="text"
+                        value={customNames[sourceId] ?? ''}
+                        onChange={(e) => setCustomNames({ ...customNames, [sourceId]: e.target.value })}
+                        placeholder={defaultName}
+                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-          {/* Preview */}
+          {/* Preview - shows first selected feature */}
           <div className="border border-gray-200 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Preview</span>
+              <span className="text-sm font-medium text-gray-700">
+                Preview {selectedSourceIds.size > 1 ? `(${selectedFeature?.name || 'first selected'})` : ''}
+              </span>
               {previewStats && (
                 <span className="text-xs text-gray-500 font-mono">
                   [{previewStats.min.toFixed(3)}, {previewStats.max.toFixed(3)}]
@@ -423,10 +507,10 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
           </button>
           <button
             onClick={handleCreate}
-            disabled={transformType === 'none' || (transformType === 'custom' && (!customExpression.trim() || !!expressionError))}
+            disabled={selectedSourceIds.size === 0 || transformType === 'none' || (transformType === 'custom' && (!customExpression.trim() || !!expressionError))}
             className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create Feature
+            Create {selectedSourceIds.size} Feature{selectedSourceIds.size !== 1 ? 's' : ''}
           </button>
         </div>
       </div>

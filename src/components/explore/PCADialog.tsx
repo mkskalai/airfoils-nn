@@ -151,11 +151,11 @@ export function PCADialog({ onClose }: PCADialogProps) {
   // Get all available features for PCA (original + transformed)
   const availableFeatures = [...getOriginalFeatures(), ...getTransformedFeatures()];
 
-  // State
+  // State - default to first 5 (original) features selected and max components for selection
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<Set<string>>(
     new Set(availableFeatures.slice(0, 5).map((f) => f.id))
   );
-  const [numComponents, setNumComponents] = useState(3);
+  const [numComponents, setNumComponents] = useState(Math.min(5, availableFeatures.length));
   const [pcaResult, setPCAResult] = useState<PCAResult | null>(null);
   const [selectedComponents, setSelectedComponents] = useState<Set<number>>(new Set([0, 1]));
   const [customName, setCustomName] = useState('');
@@ -180,7 +180,9 @@ export function PCADialog({ onClose }: PCADialogProps) {
   };
 
   const handleSelectAll = () => {
-    setSelectedFeatureIds(new Set(availableFeatures.map((f) => f.id)));
+    const allIds = new Set(availableFeatures.map((f) => f.id));
+    setSelectedFeatureIds(allIds);
+    setNumComponents(allIds.size);
   };
 
   const handleClearAll = () => {
@@ -207,8 +209,8 @@ export function PCADialog({ onClose }: PCADialogProps) {
 
         if (result) {
           setPCAResult(result);
-          // Select first 2 components by default
-          setSelectedComponents(new Set([0, 1].filter((i) => i < result.numComponents)));
+          // Select all components by default
+          setSelectedComponents(new Set(Array.from({ length: result.numComponents }, (_, i) => i)));
         } else {
           setError('PCA computation failed');
         }
