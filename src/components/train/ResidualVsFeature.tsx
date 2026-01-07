@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import type { PredictionPoint } from '../../stores/modelStore';
+import { useModelStore, type PredictionPoint } from '../../stores/modelStore';
+import { ORIGINAL_FEATURE_IDS } from '../../stores/featureStore';
 import { THEME_COLORS } from '../../utils/colors';
 import { FEATURE_LABELS, FEATURE_NAMES } from '../../types';
 
@@ -159,19 +160,131 @@ function SingleFeaturePlot({
   );
 }
 
+/**
+ * Feature selector dropdown for error analysis
+ */
+function ErrorFeatureSelector({
+  selectedIds,
+  onChange,
+}: {
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Only show original features (those that have values in PredictionPoint)
+  const availableFeatures = ORIGINAL_FEATURE_IDS.map(id => ({
+    id,
+    name: FEATURE_LABELS[id as FeatureKey] || id,
+  }));
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleFeature = (featureId: string) => {
+    const isDeselecting = selectedIds.includes(featureId);
+    if (isDeselecting && selectedIds.length <= 1) return; // Keep at least 1
+    const newSelection = isDeselecting
+      ? selectedIds.filter(id => id !== featureId)
+      : [...selectedIds, featureId];
+    onChange(newSelection);
+  };
+
+  const selectAll = () => {
+    onChange([...ORIGINAL_FEATURE_IDS]);
+  };
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+      >
+        <span>{selectedIds.length}/{availableFeatures.length} features</span>
+        <svg
+          className={`w-3 h-3 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 z-50 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg">
+          <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-gray-50 text-xs">
+            <span className="text-gray-600">Select features</span>
+            <button
+              onClick={selectAll}
+              className="text-accent hover:text-primary font-medium"
+            >
+              All
+            </button>
+          </div>
+          <div className="max-h-48 overflow-y-auto p-1">
+            {availableFeatures.map(({ id, name }) => {
+              const isSelected = selectedIds.includes(id);
+              const cannotDeselect = isSelected && selectedIds.length <= 1;
+
+              return (
+                <label
+                  key={id}
+                  className={`flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer ${
+                    isSelected ? 'bg-accent/10' : 'hover:bg-gray-50'
+                  } ${cannotDeselect ? 'cursor-not-allowed' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleFeature(id)}
+                    disabled={cannotDeselect}
+                    className="w-3 h-3 rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                  <span className="truncate text-gray-700" title={name}>
+                    {name.split(' ')[0]}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ResidualVsFeature({
   trainPredictions,
   valPredictions,
   activeTab,
 }: ResidualVsFeatureProps) {
+  const { errorAnalysisFeatureIds, setErrorAnalysisFeatureIds } = useModelStore();
+
   const showTrain = activeTab === 'train' || activeTab === 'both';
   const showVal = activeTab === 'validation' || activeTab === 'both';
 
-  // Prepare data for each feature
+  // Filter to only show features that exist in PredictionPoint (original features)
+  const selectedFeatures = useMemo(() => {
+    return errorAnalysisFeatureIds.filter(id =>
+      FEATURE_NAMES.includes(id as FeatureKey)
+    ) as FeatureKey[];
+  }, [errorAnalysisFeatureIds]);
+
+  // Prepare data for each selected feature
   const featureData = useMemo(() => {
     const result: Record<FeatureKey, { train: { x: number; residual: number }[]; val: { x: number; residual: number }[] }> = {} as any;
 
-    for (const feature of FEATURE_NAMES) {
+    for (const feature of selectedFeatures) {
       result[feature] = {
         train: trainPredictions.map((p) => ({
           x: p[feature],
@@ -185,7 +298,7 @@ export function ResidualVsFeature({
     }
 
     return result;
-  }, [trainPredictions, valPredictions]);
+  }, [trainPredictions, valPredictions, selectedFeatures]);
 
   // Compute shared Y domain across all features for consistency
   const sharedYDomain = useMemo(() => {
@@ -211,21 +324,33 @@ export function ResidualVsFeature({
     );
   }
 
+  // Dynamic grid columns based on number of selected features
+  const gridCols = selectedFeatures.length === 1 ? 'grid-cols-1' :
+                   selectedFeatures.length === 2 ? 'grid-cols-2' :
+                   selectedFeatures.length === 3 ? 'grid-cols-3' :
+                   'grid-cols-2';
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-medium text-gray-700">Residual vs Feature</h4>
-        <div className="text-xs text-gray-400">
-          Y-axis: Residual (dB)
+        <div className="flex items-center gap-2">
+          <ErrorFeatureSelector
+            selectedIds={errorAnalysisFeatureIds}
+            onChange={setErrorAnalysisFeatureIds}
+          />
+          <span className="text-xs text-gray-400">
+            Y: Residual (dB)
+          </span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        {FEATURE_NAMES.map((feature) => (
+      <div className={`grid ${gridCols} gap-4`}>
+        {selectedFeatures.map((feature) => (
           <SingleFeaturePlot
             key={feature}
             feature={feature}
-            trainData={featureData[feature].train}
-            valData={featureData[feature].val}
+            trainData={featureData[feature]?.train ?? []}
+            valData={featureData[feature]?.val ?? []}
             showTrain={showTrain}
             showVal={showVal}
             sharedYDomain={sharedYDomain}

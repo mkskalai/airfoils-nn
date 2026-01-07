@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react';
 import { useModelStore, type PredictionPoint } from '../stores/modelStore';
 import { useDataStore } from '../stores/dataStore';
+import { useFeatureStore, ORIGINAL_FEATURE_IDS, type FeatureDefinition } from '../stores/featureStore';
 import {
   buildModel,
   trainModel,
@@ -9,7 +10,61 @@ import {
   getModelWeights,
   type TrainingController,
 } from '../utils/model';
-import { getFeatureMatrix, getTargetVector, denormalizeValue, trainValidationSplit } from '../utils/data';
+
+/**
+ * Simple seeded random number generator (LCG)
+ */
+function seededRandom(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+}
+
+/**
+ * Split indices into train and validation sets
+ */
+function splitIndices(
+  length: number,
+  validationRatio: number,
+  seed: number
+): { train: number[]; validation: number[] } {
+  const indices = Array.from({ length }, (_, i) => i);
+  const random = seededRandom(seed);
+
+  // Fisher-Yates shuffle
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+
+  const splitIndex = Math.floor(length * (1 - validationRatio));
+  return {
+    train: indices.slice(0, splitIndex),
+    validation: indices.slice(splitIndex),
+  };
+}
+
+/**
+ * Helper to get feature values for training data
+ */
+function getFeatureValuesMatrix(
+  features: FeatureDefinition[],
+  indices: number[]
+): number[][] {
+  return indices.map(i => features.map(f => f.values[i]));
+}
+
+/**
+ * Helper to get target values for training data
+ */
+function getTargetValuesArray(
+  targetFeature: FeatureDefinition,
+  indices: number[]
+): number[] {
+  return indices.map(i => targetFeature.values[i]);
+}
 
 export function useTraining() {
   const controllerRef = useRef<TrainingController | null>(null);
@@ -17,6 +72,8 @@ export function useTraining() {
   const {
     config,
     predictionUpdateInterval,
+    trainingInputFeatureIds,
+    trainingTargetFeatureId,
     setModel,
     addHistoryEntry,
     clearHistory,
@@ -28,15 +85,49 @@ export function useTraining() {
     resetModel,
   } = useModelStore();
 
-  const { trainData, validationData, rawData, stats, normalizationConfig, validationSplit } = useDataStore();
+  const { rawData, validationSplit } = useDataStore();
+  const { getFeature, inverseTransform, initialized: featureStoreInitialized } = useFeatureStore();
 
   const startTraining = useCallback(async () => {
     // Clear any previous errors
     setTrainingError(null);
 
+    // Validate feature store is initialized
+    if (!featureStoreInitialized) {
+      setTrainingError('Feature store not initialized. Please wait for data to load.');
+      setTrainingStatus('error');
+      return;
+    }
+
     // Validate data
-    if (trainData.length === 0 || validationData.length === 0) {
+    if (rawData.length === 0) {
       setTrainingError('No data available for training. Please ensure the dataset is loaded.');
+      setTrainingStatus('error');
+      return;
+    }
+
+    // Validate input features
+    if (trainingInputFeatureIds.length === 0) {
+      setTrainingError('At least one input feature must be selected.');
+      setTrainingStatus('error');
+      return;
+    }
+
+    // Get input features from store
+    const inputFeatures = trainingInputFeatureIds
+      .map(id => getFeature(id))
+      .filter((f): f is FeatureDefinition => f !== undefined);
+
+    if (inputFeatures.length !== trainingInputFeatureIds.length) {
+      setTrainingError('Some selected input features are not available.');
+      setTrainingStatus('error');
+      return;
+    }
+
+    // Get target feature from store
+    const targetFeature = getFeature(trainingTargetFeatureId);
+    if (!targetFeature) {
+      setTrainingError('Target feature is not available.');
       setTrainingStatus('error');
       return;
     }
@@ -82,26 +173,37 @@ export function useTraining() {
       setCurrentEpoch(0);
       setTrainingStatus('training');
 
-      // Build the model
-      const model = buildModel(config);
+      // Build the model with dynamic input size
+      const model = buildModel(config, inputFeatures.length);
       setModel(model);
 
-      // Prepare data
-      const trainX = getFeatureMatrix(trainData);
-      const trainY = getTargetVector(trainData);
-      const valX = getFeatureMatrix(validationData);
-      const valY = getTargetVector(validationData);
-
-      // Get target normalization config for denormalization
-      const targetNormConfig = normalizationConfig.targetNormalization;
-      const targetStats = stats?.soundPressureLevel;
-
-      // Get raw data split (same seed=42 as in data store) for feature values
-      const { train: rawTrain, validation: rawVal } = trainValidationSplit(
-        rawData,
+      // Create train/validation split indices (using consistent seed for reproducibility)
+      const { train: trainIndices, validation: valIndices } = splitIndices(
+        rawData.length,
         validationSplit,
         42
       );
+
+      // Prepare data using feature store values
+      const trainX = getFeatureValuesMatrix(inputFeatures, trainIndices);
+      const trainY = getTargetValuesArray(targetFeature, trainIndices);
+      const valX = getFeatureValuesMatrix(inputFeatures, valIndices);
+      const valY = getTargetValuesArray(targetFeature, valIndices);
+
+      // Get original feature values for residual analysis (from feature store)
+      const getOriginalFeatureValues = (indices: number[]) => {
+        const result: Record<string, number[]> = {};
+        for (const featureId of ORIGINAL_FEATURE_IDS) {
+          const feature = getFeature(featureId);
+          if (feature) {
+            result[featureId] = indices.map(i => feature.values[i]);
+          }
+        }
+        return result;
+      };
+
+      const trainOriginalFeatures = getOriginalFeatureValues(trainIndices);
+      const valOriginalFeatures = getOriginalFeatureValues(valIndices);
 
       // Create controller
       const controller = createTrainingController();
@@ -138,28 +240,27 @@ export function useTraining() {
                 // Denormalize predictions and ground truth back to original scale
                 // so metrics (R², RMSE) reflect real dB values
                 const denorm = (val: number) => {
-                  if (!targetStats) return val;
-                  return denormalizeValue(val, targetStats, targetNormConfig.type);
+                  return inverseTransform(trainingTargetFeatureId, val);
                 };
 
                 const trainPredictions: PredictionPoint[] = trainY.map((gt, i) => ({
                   groundTruth: denorm(gt),
                   predicted: denorm(trainPreds[i]),
-                  frequency: rawTrain[i].frequency,
-                  angleOfAttack: rawTrain[i].angleOfAttack,
-                  chordLength: rawTrain[i].chordLength,
-                  freeStreamVelocity: rawTrain[i].freeStreamVelocity,
-                  suctionSideDisplacementThickness: rawTrain[i].suctionSideDisplacementThickness,
+                  frequency: trainOriginalFeatures['frequency']?.[i] ?? 0,
+                  angleOfAttack: trainOriginalFeatures['angleOfAttack']?.[i] ?? 0,
+                  chordLength: trainOriginalFeatures['chordLength']?.[i] ?? 0,
+                  freeStreamVelocity: trainOriginalFeatures['freeStreamVelocity']?.[i] ?? 0,
+                  suctionSideDisplacementThickness: trainOriginalFeatures['suctionSideDisplacementThickness']?.[i] ?? 0,
                 }));
 
                 const valPredictions: PredictionPoint[] = valY.map((gt, i) => ({
                   groundTruth: denorm(gt),
                   predicted: denorm(valPreds[i]),
-                  frequency: rawVal[i].frequency,
-                  angleOfAttack: rawVal[i].angleOfAttack,
-                  chordLength: rawVal[i].chordLength,
-                  freeStreamVelocity: rawVal[i].freeStreamVelocity,
-                  suctionSideDisplacementThickness: rawVal[i].suctionSideDisplacementThickness,
+                  frequency: valOriginalFeatures['frequency']?.[i] ?? 0,
+                  angleOfAttack: valOriginalFeatures['angleOfAttack']?.[i] ?? 0,
+                  chordLength: valOriginalFeatures['chordLength']?.[i] ?? 0,
+                  freeStreamVelocity: valOriginalFeatures['freeStreamVelocity']?.[i] ?? 0,
+                  suctionSideDisplacementThickness: valOriginalFeatures['suctionSideDisplacementThickness']?.[i] ?? 0,
                 }));
 
                 setPredictions(trainPredictions, valPredictions);
@@ -201,12 +302,13 @@ export function useTraining() {
   }, [
     config,
     predictionUpdateInterval,
-    trainData,
-    validationData,
+    trainingInputFeatureIds,
+    trainingTargetFeatureId,
     rawData,
     validationSplit,
-    stats,
-    normalizationConfig,
+    featureStoreInitialized,
+    getFeature,
+    inverseTransform,
     setModel,
     addHistoryEntry,
     clearHistory,

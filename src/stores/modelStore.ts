@@ -8,6 +8,7 @@ import type {
   DropoutMode,
   DataPoint,
 } from '../types';
+import { ORIGINAL_FEATURE_IDS, TARGET_FEATURE_ID } from './featureStore';
 
 // Predict tab types
 export type FeatureInputs = Record<keyof Omit<DataPoint, 'soundPressureLevel'>, number>;
@@ -52,6 +53,11 @@ interface ModelState {
   valPredictions: PredictionPoint[];
   predictionUpdateInterval: number;
   networkWeights: NetworkWeights | null;
+  // Training feature selection
+  trainingInputFeatureIds: string[];
+  trainingTargetFeatureId: string;
+  // Error analysis feature selection (for ResidualVsFeature)
+  errorAnalysisFeatureIds: string[];
   // Predict tab state (persists across tab switches)
   predictInputValues: FeatureInputs;
   predictCurrentPrediction: number | null;
@@ -80,6 +86,10 @@ interface ModelActions {
   removeLayer: (index: number) => void;
   setDropoutMode: (mode: DropoutMode) => void;
   setGlobalDropout: (rate: number) => void;
+  // Training feature selection actions
+  setTrainingInputFeatureIds: (ids: string[]) => void;
+  setTrainingTargetFeatureId: (id: string) => void;
+  setErrorAnalysisFeatureIds: (ids: string[]) => void;
   // Predict tab actions
   setPredictInputValues: (values: FeatureInputs) => void;
   updatePredictInputValue: (key: keyof Omit<DataPoint, 'soundPressureLevel'>, value: number) => void;
@@ -132,6 +142,10 @@ const initialState: ModelState = {
   valPredictions: [],
   predictionUpdateInterval: 10,
   networkWeights: null,
+  // Training feature selection
+  trainingInputFeatureIds: [...ORIGINAL_FEATURE_IDS],
+  trainingTargetFeatureId: TARGET_FEATURE_ID,
+  errorAnalysisFeatureIds: [...ORIGINAL_FEATURE_IDS],
   // Predict tab initial state
   predictInputValues: defaultPredictInputValues,
   predictCurrentPrediction: null,
@@ -222,6 +236,13 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   setGlobalDropout: (rate) => set((state) => ({
     config: { ...state.config, globalDropout: rate },
   })),
+
+  // Training feature selection actions
+  setTrainingInputFeatureIds: (ids) => set({ trainingInputFeatureIds: ids }),
+
+  setTrainingTargetFeatureId: (id) => set({ trainingTargetFeatureId: id }),
+
+  setErrorAnalysisFeatureIds: (ids) => set({ errorAnalysisFeatureIds: ids }),
 
   // Predict tab actions
   setPredictInputValues: (values) => set({ predictInputValues: values }),

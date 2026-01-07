@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { useModelStore } from '../../stores/modelStore';
-import { FEATURE_LABELS, FEATURE_NAMES } from '../../types';
+import { useFeatureStore } from '../../stores/featureStore';
 
 interface Node {
   x: number;
   y: number;
   label?: string;
+  fullName?: string; // Full name for tooltip
 }
 
 interface Layer {
@@ -15,18 +16,32 @@ interface Layer {
 }
 
 export function NetworkPreview() {
-  const { config } = useModelStore();
+  const { config, trainingInputFeatureIds, trainingTargetFeatureId } = useModelStore();
+  const { getFeature } = useFeatureStore();
 
-  const { layers, connections, width, height } = useMemo(() => {
+  // Get feature definitions for selected inputs and target
+  const inputFeatures = useMemo(() => {
+    return trainingInputFeatureIds
+      .map(id => getFeature(id))
+      .filter((f): f is NonNullable<typeof f> => f !== undefined);
+  }, [trainingInputFeatureIds, getFeature]);
+
+  const targetFeature = useMemo(() => {
+    return getFeature(trainingTargetFeatureId);
+  }, [trainingTargetFeatureId, getFeature]);
+
+  const { layers, connections, width, height, inputCount } = useMemo(() => {
     // Match NetworkViz dimensions
     const padding = { top: 50, right: 60, bottom: 50, left: 60 };
     const nodeRadius = 24;
     const layerGap = 160;
     const nodeGap = 20;
 
+    const numInputs = inputFeatures.length || 1;
+
     // Build layer structure
     const layerSizes = [
-      5, // Input layer
+      numInputs, // Input layer (dynamic based on selected features)
       ...config.hiddenLayers.map((l) => l.neurons),
       1, // Output layer
     ];
@@ -49,12 +64,25 @@ export function NetworkPreview() {
 
       for (let i = 0; i < displayCount; i++) {
         let label: string | undefined;
+        let fullName: string | undefined;
 
         // Add labels for input and output layers
-        if (layerIndex === 0) {
-          label = FEATURE_LABELS[FEATURE_NAMES[i]].split(' ')[0]; // First word only
+        if (layerIndex === 0 && inputFeatures[i]) {
+          const feature = inputFeatures[i];
+          // Use abbreviated label (first word or first 4 chars)
+          const words = feature.name.split(/[\s(]/);
+          label = words[0].length <= 6 ? words[0] : words[0].substring(0, 4);
+          fullName = feature.name;
         } else if (layerIndex === layerSizes.length - 1) {
-          label = 'SPL';
+          // Use abbreviated target name
+          if (targetFeature) {
+            const words = targetFeature.name.split(/[\s(]/);
+            label = words[0].length <= 6 ? words[0] : words[0].substring(0, 4);
+            fullName = targetFeature.name;
+          } else {
+            label = 'Target';
+            fullName = 'Target Variable';
+          }
         }
 
         // Handle "..." indicator for large layers
@@ -63,12 +91,14 @@ export function NetworkPreview() {
             x,
             y: startY + i * (nodeRadius * 2 + nodeGap) + nodeRadius,
             label: `+${nodeCount - displayCount + 1}`,
+            fullName: `${nodeCount - displayCount + 1} more nodes`,
           });
         } else {
           nodes.push({
             x,
             y: startY + i * (nodeRadius * 2 + nodeGap) + nodeRadius,
             label,
+            fullName,
           });
         }
       }
@@ -113,8 +143,8 @@ export function NetworkPreview() {
       }
     }
 
-    return { layers, connections, width: calculatedWidth, height: calculatedHeight };
-  }, [config.hiddenLayers]);
+    return { layers, connections, width: calculatedWidth, height: calculatedHeight, inputCount: numInputs };
+  }, [config.hiddenLayers, inputFeatures, targetFeature]);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -152,7 +182,7 @@ export function NetworkPreview() {
           {layers.map((layer, layerIndex) => (
             <g key={layerIndex} className="layer">
               {layer.nodes.map((node, nodeIndex) => (
-                <g key={nodeIndex}>
+                <g key={nodeIndex} className="cursor-pointer">
                   <circle
                     cx={node.x}
                     cy={node.y}
@@ -167,7 +197,9 @@ export function NetworkPreview() {
                     stroke="white"
                     strokeWidth={3}
                     className="drop-shadow-sm"
-                  />
+                  >
+                    {node.fullName && <title>{node.fullName}</title>}
+                  </circle>
                   {node.label && (
                     <text
                       x={node.x}
@@ -177,8 +209,9 @@ export function NetworkPreview() {
                       fontSize={node.label.startsWith('+') ? 10 : 11}
                       fill="white"
                       fontWeight="bold"
+                      style={{ pointerEvents: 'none' }}
                     >
-                      {node.label.startsWith('+') ? node.label : node.label.substring(0, 4)}
+                      {node.label.startsWith('+') ? node.label : node.label.substring(0, 6)}
                     </text>
                   )}
                 </g>
@@ -215,29 +248,35 @@ export function NetworkPreview() {
 
       {/* Architecture summary */}
       <div className="mt-4 flex flex-wrap gap-2 justify-center">
-        <span className="px-3 py-1 bg-accent/10 text-accent rounded-full text-sm font-medium">
-          5 inputs
+        <span
+          className="px-3 py-1 bg-accent/10 text-accent rounded-full text-sm font-medium cursor-help"
+          title={inputFeatures.map(f => f.name).join(', ')}
+        >
+          {inputCount} input{inputCount !== 1 ? 's' : ''}
         </span>
         {config.hiddenLayers.map((layer, i) => (
           <span key={i} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
             {layer.neurons} ({layer.activation})
           </span>
         ))}
-        <span className="px-3 py-1 bg-warm/10 text-warm rounded-full text-sm font-medium">
+        <span
+          className="px-3 py-1 bg-warm/10 text-warm rounded-full text-sm font-medium cursor-help"
+          title={targetFeature?.name || 'Target'}
+        >
           1 output
         </span>
       </div>
 
       {/* Total parameters estimate */}
       <div className="mt-3 text-center text-sm text-gray-500">
-        ~{estimateParameters(config.hiddenLayers.map((l) => l.neurons)).toLocaleString()} trainable parameters
+        ~{estimateParameters(inputCount, config.hiddenLayers.map((l) => l.neurons)).toLocaleString()} trainable parameters
       </div>
     </div>
   );
 }
 
-function estimateParameters(hiddenSizes: number[]): number {
-  const layers = [5, ...hiddenSizes, 1];
+function estimateParameters(inputSize: number, hiddenSizes: number[]): number {
+  const layers = [inputSize, ...hiddenSizes, 1];
   let params = 0;
   for (let i = 0; i < layers.length - 1; i++) {
     // weights + biases

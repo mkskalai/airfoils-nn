@@ -332,7 +332,7 @@ Consider using `ml-pca` npm package or implementing SVD manually. TensorFlow.js 
 
 5. **Training Data Pipeline:**
    - Fetch selected feature values from store
-   - Handle normalization through transforms
+   - Assume normalization handled by user through transforms, record the transforms order for inference
    - Cache prepared training data
 
 6. **Error Plots Feature Selection:**

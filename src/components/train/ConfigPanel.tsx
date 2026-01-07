@@ -1,22 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useDataStore } from '../../stores/dataStore';
 import { useModelStore } from '../../stores/modelStore';
-import type { ActivationFunction, NormalizationType, FeatureNormalization } from '../../types';
-import { FEATURE_NAMES, FEATURE_LABELS } from '../../types';
-import { validateCustomTransform } from '../../utils/data';
+import { useFeatureStore, type FeatureDefinition } from '../../stores/featureStore';
+import type { ActivationFunction } from '../../types';
 
 const ACTIVATION_OPTIONS: { value: ActivationFunction; label: string }[] = [
   { value: 'relu', label: 'ReLU' },
   { value: 'sigmoid', label: 'Sigmoid' },
   { value: 'tanh', label: 'Tanh' },
   { value: 'leakyRelu', label: 'Leaky ReLU' },
-];
-
-const NORMALIZATION_OPTIONS: { value: NormalizationType; label: string; description: string }[] = [
-  { value: 'none', label: 'None', description: 'Raw values' },
-  { value: 'minmax', label: 'Min-Max', description: '0 to 1' },
-  { value: 'zscore', label: 'Z-Score', description: 'μ=0, σ=1' },
-  { value: 'custom', label: 'Custom', description: 'Expression' },
 ];
 
 const LEARNING_RATE_PRESETS = [0.1, 0.01, 0.001, 0.0001];
@@ -29,72 +21,197 @@ interface ConfigPanelProps {
   dataReady: boolean;
 }
 
-function NormalizationTypeSelector({
-  value,
-  onChange,
-  disabled,
-  showCustom = true,
-}: {
-  value: FeatureNormalization;
-  onChange: (norm: FeatureNormalization) => void;
-  disabled: boolean;
-  showCustom?: boolean;
-}) {
-  const [customError, setCustomError] = useState<string | null>(null);
-  const options = showCustom ? NORMALIZATION_OPTIONS : NORMALIZATION_OPTIONS.filter(o => o.value !== 'custom');
+/**
+ * Feature type badge component
+ */
+function TypeBadge({ type }: { type: FeatureDefinition['type'] }) {
+  const colors = {
+    original: 'bg-blue-100 text-blue-700',
+    transformed: 'bg-purple-100 text-purple-700',
+    pca: 'bg-green-100 text-green-700',
+  };
+
+  const labels = {
+    original: 'Orig',
+    transformed: 'Trans',
+    pca: 'PCA',
+  };
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-1">
-        {options.map((option) => (
-          <button
-            key={option.value}
-            onClick={() => onChange({ ...value, type: option.value })}
-            disabled={disabled}
-            className={`px-2 py-1 text-xs rounded transition-all ${
-              value.type === option.value
-                ? 'bg-accent text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      {value.type === 'custom' && (
-        <div className="space-y-1">
-          <input
-            type="text"
-            value={value.customTransform || ''}
-            onChange={(e) => {
-              const expr = e.target.value;
-              const error = expr ? validateCustomTransform(expr) : null;
-              setCustomError(error);
-              onChange({ ...value, customTransform: expr });
-            }}
-            disabled={disabled}
-            placeholder="e.g., log(x+1)"
-            className={`w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 ${
-              customError ? 'border-red-300 focus:ring-red-500' : 'border-gray-200 focus:ring-accent'
-            } disabled:opacity-50`}
-          />
-          {customError && <p className="text-xs text-red-500">{customError}</p>}
+    <span className={`text-xs px-1 py-0.5 rounded ${colors[type]}`}>
+      {labels[type]}
+    </span>
+  );
+}
+
+/**
+ * Multi-select dropdown for input features
+ */
+function InputFeatureSelector({
+  selectedIds,
+  onChange,
+  disabled,
+}: {
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+  disabled: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { getAllFeatures } = useFeatureStore();
+
+  const allFeatures = getAllFeatures();
+
+  // Sort features: original first, then transformed, then PCA
+  const sortedFeatures = [...allFeatures].sort((a, b) => {
+    const typeOrder = { original: 0, transformed: 1, pca: 2 };
+    if (typeOrder[a.type] !== typeOrder[b.type]) {
+      return typeOrder[a.type] - typeOrder[b.type];
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleFeature = (featureId: string) => {
+    if (disabled) return;
+    const isDeselecting = selectedIds.includes(featureId);
+    // Prevent deselecting below 1
+    if (isDeselecting && selectedIds.length <= 1) return;
+    const newSelection = isDeselecting
+      ? selectedIds.filter(id => id !== featureId)
+      : [...selectedIds, featureId];
+    onChange(newSelection);
+  };
+
+  const selectOriginalOnly = () => {
+    if (disabled) return;
+    const originalIds = sortedFeatures
+      .filter(f => f.type === 'original')
+      .map(f => f.id);
+    if (originalIds.length > 0) {
+      onChange(originalIds);
+    }
+  };
+
+  const selectedCount = selectedIds.filter(id =>
+    sortedFeatures.some(f => f.id === id)
+  ).length;
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={`w-full flex items-center justify-between px-3 py-2 bg-white border border-gray-200 rounded-lg
+                   hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm
+                   ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        <span className="text-gray-700">
+          {selectedCount} feature{selectedCount !== 1 ? 's' : ''} selected
+        </span>
+        <svg
+          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+          {/* Quick actions */}
+          <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 bg-gray-50 text-xs">
+            <button
+              onClick={selectOriginalOnly}
+              className="text-accent hover:text-primary font-medium"
+            >
+              Original Only
+            </button>
+          </div>
+
+          {/* Feature list */}
+          <div className="max-h-48 overflow-y-auto p-1">
+            {sortedFeatures.map((feature) => {
+              const isSelected = selectedIds.includes(feature.id);
+              const cannotDeselect = isSelected && selectedIds.length <= 1;
+
+              return (
+                <label
+                  key={feature.id}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer ${
+                    isSelected ? 'bg-accent/10' : 'hover:bg-gray-50'
+                  } ${cannotDeselect ? 'cursor-not-allowed' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleFeature(feature.id)}
+                    disabled={cannotDeselect}
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                  <span className="flex-1 truncate text-gray-700" title={feature.name}>
+                    {feature.name}
+                  </span>
+                  <TypeBadge type={feature.type} />
+                </label>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
+/**
+ * Dropdown for selecting target feature
+ */
+function TargetFeatureSelector({
+  selectedId,
+  onChange,
+  disabled,
+}: {
+  selectedId: string;
+  onChange: (id: string) => void;
+  disabled: boolean;
+}) {
+  const { getValidTargetFeatures } = useFeatureStore();
+
+  const targetFeatures = getValidTargetFeatures();
+
+  return (
+    <select
+      value={selectedId}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className={`w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm
+                 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
+                 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      {targetFeatures.map((feature) => (
+        <option key={feature.id} value={feature.id}>
+          {feature.name}
+          {feature.type !== 'original' && ` (${feature.type})`}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: ConfigPanelProps) {
-  const {
-    normalizationConfig,
-    setNormalizationMode,
-    setGlobalNormalization,
-    setFeatureNormalization,
-    setTargetNormalization,
-    stats,
-    rawData,
-  } = useDataStore();
+  const { rawData } = useDataStore();
   const {
     config,
     setConfig,
@@ -106,7 +223,12 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
     setGlobalDropout,
     predictionUpdateInterval,
     setPredictionUpdateInterval,
+    trainingInputFeatureIds,
+    trainingTargetFeatureId,
+    setTrainingInputFeatureIds,
+    setTrainingTargetFeatureId,
   } = useModelStore();
+  const { initialized: featureStoreInitialized } = useFeatureStore();
 
   const isTraining = trainingStatus === 'training';
   const isPaused = trainingStatus === 'paused';
@@ -198,108 +320,56 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
         {trainingControlsJSX}
       </section>
 
-      {/* Normalization Section */}
+      {/* Feature Selection Section */}
       <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
         <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
           <span className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-accent/10 text-accent flex items-center justify-center text-xs sm:text-sm font-bold">1</span>
-          Data Normalization
+          Feature Selection
         </h3>
 
-        {/* Global / Per-Feature Toggle */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setNormalizationMode('global')}
-            disabled={isTraining}
-            className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
-              normalizationConfig.mode === 'global'
-                ? 'border-accent bg-accent/5 text-accent'
-                : 'border-gray-200 text-gray-600 hover:border-gray-300'
-            } ${isTraining ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            Global
-          </button>
-          <button
-            onClick={() => setNormalizationMode('per-feature')}
-            disabled={isTraining}
-            className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
-              normalizationConfig.mode === 'per-feature'
-                ? 'border-accent bg-accent/5 text-accent'
-                : 'border-gray-200 text-gray-600 hover:border-gray-300'
-            } ${isTraining ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            Per-Feature
-          </button>
-        </div>
-
-        {normalizationConfig.mode === 'global' ? (
-          /* Global Normalization */
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">All Features</label>
-              <NormalizationTypeSelector
-                value={normalizationConfig.global}
-                onChange={setGlobalNormalization}
-                disabled={isTraining}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Target (SPL)</label>
-              <NormalizationTypeSelector
-                value={normalizationConfig.targetNormalization}
-                onChange={setTargetNormalization}
-                disabled={isTraining}
-              />
-            </div>
-          </div>
+        {!featureStoreInitialized ? (
+          <div className="text-sm text-gray-500 py-2">Loading features...</div>
         ) : (
-          /* Per-Feature Normalization */
-          <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
-            {FEATURE_NAMES.map((feature) => (
-              <div key={feature} className="p-2 bg-gray-50 rounded-lg">
-                <label className="block text-xs font-medium text-gray-700 mb-1 truncate" title={FEATURE_LABELS[feature]}>
-                  {FEATURE_LABELS[feature].split(' ')[0]}
-                </label>
-                <NormalizationTypeSelector
-                  value={normalizationConfig.perFeature[feature]}
-                  onChange={(norm) => setFeatureNormalization(feature, norm)}
-                  disabled={isTraining}
-                />
-              </div>
-            ))}
-            <div className="p-2 bg-warm/5 rounded-lg border border-warm/20">
-              <label className="block text-xs font-medium text-warm mb-1">Target (SPL)</label>
-              <NormalizationTypeSelector
-                value={normalizationConfig.targetNormalization}
-                onChange={setTargetNormalization}
+          <div className="space-y-4">
+            {/* Input Features */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Input Features
+              </label>
+              <InputFeatureSelector
+                selectedIds={trainingInputFeatureIds}
+                onChange={setTrainingInputFeatureIds}
+                disabled={isTraining}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Select features to use as model inputs
+              </p>
+            </div>
+
+            {/* Target Feature */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Target Variable
+              </label>
+              <TargetFeatureSelector
+                selectedId={trainingTargetFeatureId}
+                onChange={setTrainingTargetFeatureId}
                 disabled={isTraining}
               />
             </div>
-          </div>
-        )}
 
-        {/* Custom Transform Help */}
-        <details className="mt-3">
-          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-            Custom transform syntax help
-          </summary>
-          <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 space-y-1">
-            <p><strong>Variables:</strong> x, min, max, mean, std</p>
-            <p><strong>Functions:</strong> log, log10, sqrt, abs, exp, sin, cos, pow</p>
-            <p><strong>Constants:</strong> PI, E</p>
-            <p className="mt-2"><strong>Examples:</strong></p>
-            <ul className="list-disc list-inside space-y-0.5 ml-2">
-              <li><code className="bg-gray-200 px-1 rounded">log(x+1)</code> - Log transform</li>
-              <li><code className="bg-gray-200 px-1 rounded">(x-min)/(max-min)</code> - Min-max</li>
-              <li><code className="bg-gray-200 px-1 rounded">(x-mean)/std</code> - Z-score</li>
-              <li><code className="bg-gray-200 px-1 rounded">sqrt(x)</code> - Square root</li>
-              <li><code className="bg-gray-200 px-1 rounded">pow(x, 0.5)</code> - Power transform</li>
-            </ul>
-          </div>
-        </details>
+            {/* Hint to Feature Engineering */}
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <p className="text-xs text-blue-700">
+                <strong>Tip:</strong> Create transformed or PCA features in the{' '}
+                <span className="font-semibold">Explore → Feature Engineering</span> section,
+                then select them here for training.
+              </p>
+            </div>
 
-        {stats && (
-          <div className="mt-3 text-xs text-gray-500">
-            Dataset: {rawData.length} samples
+            <div className="text-xs text-gray-500">
+              Dataset: {rawData.length} samples
+            </div>
           </div>
         )}
       </section>
@@ -344,7 +414,7 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
         <div className="mb-3 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-600">Input Layer</span>
-            <span className="text-sm text-gray-500">5 features</span>
+            <span className="text-sm text-gray-500">{trainingInputFeatureIds.length} feature{trainingInputFeatureIds.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
 

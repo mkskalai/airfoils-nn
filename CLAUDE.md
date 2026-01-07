@@ -29,8 +29,9 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - **Predict** - Make predictions with trained model
 
 **State Management** (`src/stores/`):
-- `dataStore.ts` - Dataset loading, normalization (none/min-max/z-score/custom), train/val split
-- `modelStore.ts` - Model configuration, training state, history, predictions
+- `dataStore.ts` - Dataset loading, train/val split
+- `modelStore.ts` - Model configuration, training state, history, predictions, training feature selection
+- `featureStore.ts` - Feature store with transforms, PCA, derived features for training/visualization
 
 **Types** (`src/types/index.ts` and `src/stores/modelStore.ts`):
 - `DataPoint` - 5 input features + 1 target (sound pressure level)
@@ -40,21 +41,23 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 
 **Data Flow**:
 1. Dataset loaded from `/public/airfoil_self_noise.dat` on app mount
-2. Data normalized based on user-selected method (global or per-feature)
-3. TensorFlow.js model built from `ModelConfig`
-4. Training updates `TrainingHistory` and `PredictionPoint[]` in real-time
-5. Trained model used for predictions
+2. Feature store initialized with original features
+3. User creates transformed/PCA features in Explore → Feature Engineering
+4. User selects input features and target for training in Train tab
+5. TensorFlow.js model built with dynamic input size based on selected features
+6. Training updates `TrainingHistory` and `PredictionPoint[]` in real-time
+7. Trained model used for predictions
 
 ## Key Components
 
 **Training Tab** (`src/components/train/`):
-- `ConfigPanel.tsx` - Normalization, architecture, hyperparameters, regularization
+- `ConfigPanel.tsx` - Feature selection (input/target), architecture, hyperparameters, regularization
 - `NetworkPreview.tsx` - Visual preview of network architecture (shown before training)
 - `NetworkViz.tsx` - D3.js weight visualization with color/width encoding (shown during/after training)
 - `LossChart.tsx` - Real-time training/validation loss chart (D3.js)
 - `PredictionScatterplot.tsx` - GT vs Predicted visualization with R², RMSE (original dB scale)
 - `ErrorAnalysis.tsx` - Residual histogram, error metrics (MAE, RMSE, R², within-threshold %)
-- `ResidualVsFeature.tsx` - Residual vs feature scatterplots (5 plots, one per input feature)
+- `ResidualVsFeature.tsx` - Residual vs feature scatterplots with feature selector (1-5 plots)
 
 **Explore Tab** (`src/components/explore/`):
 - `CorrelationHeatmap.tsx` - Dynamic NxN Pearson correlation matrix (updates with feature selection)
@@ -101,4 +104,5 @@ See `PLAN.md` for detailed work packages. Current status:
   - ✅ WP-FE4: PCA Visualizations
   - ✅ WP-FE5: Dynamic Feature Selection for Plots
   - ✅ WP-FE6: Pairwise Scatterplot Matrix
-  - 🔲 WP-FE7-9: Remaining enhancements (Training Integration, Log Scale, Downloads)
+  - ✅ WP-FE7: Training Tab Feature Selection (input/target from feature store, dynamic model size, error analysis feature selector)
+  - 🔲 WP-FE8-9: Remaining enhancements (Log Scale, Downloads)

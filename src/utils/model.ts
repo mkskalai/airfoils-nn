@@ -24,8 +24,10 @@ function getActivation(activation: ActivationFunction): TFActivation {
 
 /**
  * Build a TensorFlow.js Sequential model from configuration
+ * @param config - Model configuration
+ * @param inputSize - Number of input features (defaults to 5 for backward compatibility)
  */
-export function buildModel(config: ModelConfig): tf.Sequential {
+export function buildModel(config: ModelConfig, inputSize: number = 5): tf.Sequential {
   const model = tf.sequential();
 
   // Create regularizer if specified
@@ -46,7 +48,7 @@ export function buildModel(config: ModelConfig): tf.Sequential {
         units: layer.neurons,
         activation: isLeakyRelu ? undefined : getActivation(layer.activation),
         kernelRegularizer: regularizer,
-        inputShape: [5], // 5 input features
+        inputShape: [inputSize], // Dynamic input size based on selected features
       }));
     } else {
       model.add(tf.layers.dense({
