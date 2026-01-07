@@ -66,6 +66,8 @@ interface ModelState {
   predictHistoryIdCounter: number;
   predictXAxis: keyof DataPoint;
   predictYAxis: keyof DataPoint;
+  // Loss chart preferences
+  lossChartLogScale: boolean;
 }
 
 interface ModelActions {
@@ -98,6 +100,8 @@ interface ModelActions {
   addPredictHistoryItem: (item: Omit<PredictionHistoryItem, 'id'>) => void;
   clearPredictHistory: () => void;
   setPredictAxes: (xAxis: keyof DataPoint, yAxis: keyof DataPoint) => void;
+  // Loss chart actions
+  setLossChartLogScale: (enabled: boolean) => void;
 }
 
 type ModelStore = ModelState & ModelActions;
@@ -109,7 +113,6 @@ const defaultLayerConfig: LayerConfig = {
 
 const defaultConfig: ModelConfig = {
   hiddenLayers: [
-    { neurons: 4, activation: 'relu' },
     { neurons: 4, activation: 'relu' },
   ],
   learningRate: 0.001,
@@ -154,6 +157,8 @@ const initialState: ModelState = {
   predictHistoryIdCounter: 0,
   predictXAxis: 'frequency',
   predictYAxis: 'angleOfAttack',
+  // Loss chart preferences
+  lossChartLogScale: false,
 };
 
 export const useModelStore = create<ModelStore>((set, get) => ({
@@ -267,4 +272,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   clearPredictHistory: () => set({ predictHistory: [] }),
 
   setPredictAxes: (xAxis, yAxis) => set({ predictXAxis: xAxis, predictYAxis: yAxis }),
+
+  // Loss chart actions
+  setLossChartLogScale: (enabled) => set({ lossChartLogScale: enabled }),
 }));

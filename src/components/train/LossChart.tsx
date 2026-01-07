@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import type { TrainingHistory } from '../../types';
 import { THEME_COLORS, formatValue } from '../../utils/colors';
+import { useModelStore } from '../../stores/modelStore';
 
 interface LossChartProps {
   history: TrainingHistory[];
@@ -11,6 +12,9 @@ interface LossChartProps {
 
 const MARGIN = { top: 20, right: 120, bottom: 50, left: 70 };
 
+// Small epsilon to handle zero values in log scale
+const LOG_EPSILON = 1e-10;
+
 export function LossChart({
   history,
   bestValLoss,
@@ -19,6 +23,10 @@ export function LossChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [containerWidth, setContainerWidth] = useState(600);
+
+  // Log scale preference from store
+  const logScale = useModelStore((state) => state.lossChartLogScale);
+  const setLogScale = useModelStore((state) => state.setLossChartLogScale);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -57,7 +65,9 @@ export function LossChart({
     if (history.length === 0) {
       return {
         xScale: d3.scaleLinear().domain([0, 1]).range([0, innerWidth]),
-        yScale: d3.scaleLinear().domain([0, 1]).range([innerHeight, 0]),
+        yScale: logScale
+          ? d3.scaleLog().domain([LOG_EPSILON, 1]).range([innerHeight, 0])
+          : d3.scaleLinear().domain([0, 1]).range([innerHeight, 0]),
       };
     }
 
@@ -65,36 +75,51 @@ export function LossChart({
     const allLosses = history.flatMap((d) => [d.loss, d.valLoss]);
     const minL = Math.min(...allLosses);
     const maxL = Math.max(...allLosses);
-    const padding = (maxL - minL) * 0.1 || 0.1;
 
-    return {
-      xScale: d3.scaleLinear()
-        .domain([0, Math.max(...epochs)])
-        .range([0, innerWidth]),
-      yScale: d3.scaleLinear()
+    const xScale = d3.scaleLinear()
+      .domain([0, Math.max(...epochs)])
+      .range([0, innerWidth]);
+
+    let yScale: d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>;
+
+    if (logScale) {
+      // For log scale, ensure minimum is positive
+      const logMin = Math.max(minL, LOG_EPSILON);
+      const logMax = maxL > 0 ? maxL : 1;
+      // Add some padding in log space
+      const logPadding = Math.pow(logMax / logMin, 0.05);
+      yScale = d3.scaleLog()
+        .domain([logMin / logPadding, logMax * logPadding])
+        .range([innerHeight, 0])
+        .nice();
+    } else {
+      const padding = (maxL - minL) * 0.1 || 0.1;
+      yScale = d3.scaleLinear()
         .domain([Math.max(0, minL - padding), maxL + padding])
         .range([innerHeight, 0])
-        .nice(),
-    };
-  }, [history, innerWidth, innerHeight]);
+        .nice();
+    }
 
-  // Line generators
+    return { xScale, yScale };
+  }, [history, innerWidth, innerHeight, logScale]);
+
+  // Line generators - handle zero values for log scale
   const trainLine = useMemo(
     () =>
       d3.line<TrainingHistory>()
         .x((d) => xScale(d.epoch))
-        .y((d) => yScale(d.loss))
+        .y((d) => yScale(logScale ? Math.max(d.loss, LOG_EPSILON) : d.loss))
         .curve(d3.curveMonotoneX),
-    [xScale, yScale]
+    [xScale, yScale, logScale]
   );
 
   const valLine = useMemo(
     () =>
       d3.line<TrainingHistory>()
         .x((d) => xScale(d.epoch))
-        .y((d) => yScale(d.valLoss))
+        .y((d) => yScale(logScale ? Math.max(d.valLoss, LOG_EPSILON) : d.valLoss))
         .curve(d3.curveMonotoneX),
-    [xScale, yScale]
+    [xScale, yScale, logScale]
   );
 
   // Find best validation loss point
@@ -159,9 +184,18 @@ export function LossChart({
       .style('fill', '#666')
       .text('Epoch');
 
-    // Add Y axis
-    const yAxis = g.append('g')
-      .call(d3.axisLeft(yScale).ticks(6).tickFormat((d) => formatValue(d as number, 4)));
+    // Add Y axis with appropriate ticks for log/linear scale
+    const yAxisGenerator = d3.axisLeft(yScale);
+    if (logScale) {
+      // For log scale, use fewer ticks and scientific notation for small values
+      yAxisGenerator.ticks(5, (d: number) => {
+        if (d >= 0.01) return formatValue(d, 3);
+        return d.toExponential(1);
+      });
+    } else {
+      yAxisGenerator.ticks(6).tickFormat((d) => formatValue(d as number, 4));
+    }
+    const yAxis = g.append('g').call(yAxisGenerator);
 
     yAxis.selectAll('text')
       .style('font-size', '12px')
@@ -178,7 +212,7 @@ export function LossChart({
       .attr('text-anchor', 'middle')
       .style('font-size', '13px')
       .style('fill', '#666')
-      .text('Loss (MSE)');
+      .text(logScale ? 'Loss (MSE) - Log Scale' : 'Loss (MSE)');
 
     if (history.length > 0) {
       // Draw training loss line (solid)
@@ -207,7 +241,7 @@ export function LossChart({
           .append('circle')
           .attr('class', 'train-dot')
           .attr('cx', (d) => xScale(d.epoch))
-          .attr('cy', (d) => yScale(d.loss))
+          .attr('cy', (d) => yScale(logScale ? Math.max(d.loss, LOG_EPSILON) : d.loss))
           .attr('r', 3)
           .attr('fill', THEME_COLORS.accent)
           .style('cursor', 'pointer');
@@ -219,7 +253,7 @@ export function LossChart({
           .append('circle')
           .attr('class', 'val-dot')
           .attr('cx', (d) => xScale(d.epoch))
-          .attr('cy', (d) => yScale(d.valLoss))
+          .attr('cy', (d) => yScale(logScale ? Math.max(d.valLoss, LOG_EPSILON) : d.valLoss))
           .attr('r', 3)
           .attr('fill', THEME_COLORS.warm)
           .style('cursor', 'pointer');
@@ -229,7 +263,7 @@ export function LossChart({
       if (bestValPoint) {
         // Star marker for best val loss
         const starX = xScale(bestValPoint.epoch);
-        const starY = yScale(bestValPoint.valLoss);
+        const starY = yScale(logScale ? Math.max(bestValPoint.valLoss, LOG_EPSILON) : bestValPoint.valLoss);
 
         // Outer glow
         g.append('circle')
@@ -349,10 +383,23 @@ export function LossChart({
         .style('fill', '#666')
         .text('Best Val');
     }
-  }, [history, xScale, yScale, trainLine, valLine, bestValPoint, innerWidth, innerHeight, width]);
+  }, [history, xScale, yScale, trainLine, valLine, bestValPoint, innerWidth, innerHeight, width, logScale]);
 
   return (
     <div ref={containerRef} className="relative w-full">
+      {/* Log scale toggle */}
+      <div className="absolute top-2 left-20 z-10">
+        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={logScale}
+            onChange={(e) => setLogScale(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-gray-300 text-accent focus:ring-accent cursor-pointer"
+          />
+          Log Scale
+        </label>
+      </div>
+
       <svg
         ref={svgRef}
         width={width}

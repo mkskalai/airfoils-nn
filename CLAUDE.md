@@ -54,7 +54,7 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 - `ConfigPanel.tsx` - Feature selection (input/target), architecture, hyperparameters, regularization
 - `NetworkPreview.tsx` - Visual preview of network architecture (shown before training)
 - `NetworkViz.tsx` - D3.js weight visualization with color/width encoding (shown during/after training)
-- `LossChart.tsx` - Real-time training/validation loss chart (D3.js)
+- `LossChart.tsx` - Real-time training/validation loss chart (D3.js) with log scale toggle
 - `PredictionScatterplot.tsx` - GT vs Predicted visualization with R², RMSE (original dB scale)
 - `ErrorAnalysis.tsx` - Residual histogram, error metrics (MAE, RMSE, R², within-threshold %)
 - `ResidualVsFeature.tsx` - Residual vs feature scatterplots with feature selector (1-5 plots)
@@ -105,4 +105,5 @@ See `PLAN.md` for detailed work packages. Current status:
   - ✅ WP-FE5: Dynamic Feature Selection for Plots
   - ✅ WP-FE6: Pairwise Scatterplot Matrix
   - ✅ WP-FE7: Training Tab Feature Selection (input/target from feature store, dynamic model size, error analysis feature selector)
-  - 🔲 WP-FE8-9: Remaining enhancements (Log Scale, Downloads)
+  - ✅ WP-FE8: Loss Chart Log Scale Toggle
+  - 🔲 WP-FE9: Plot Download Functionality
