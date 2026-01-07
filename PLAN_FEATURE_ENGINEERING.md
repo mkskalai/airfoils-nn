@@ -377,8 +377,8 @@ Consider using `ml-pca` npm package or implementing SVD manually. TensorFlow.js 
 
 ---
 
-### WP-FE9: Plot Download Functionality
-**Estimated complexity: Medium**
+### WP-FE9: Plot Download Functionality ✅
+**Estimated complexity: Medium** | **Status: COMPLETE**
 
 #### Tasks:
 1. **Download Utility (`src/utils/download.ts`):**
@@ -440,7 +440,7 @@ WP-FE7 (Training Tab Feature Selection)  ←── Remove normalization here
     ↓
 WP-FE8 (Log Scale for Loss)  ←── Quick win
     ↓
-WP-FE9 (Plot Downloads)  ←── Final polish
+WP-FE9 (Plot Downloads) ✅  ←── Final polish
 ```
 
 ---

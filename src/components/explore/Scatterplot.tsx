@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import type { DataPoint } from '../../types';
 import { FEATURE_LABELS } from '../../types';
 import { createTargetColorScale, formatValue, THEME_COLORS } from '../../utils/colors';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface ScatterplotProps {
   data: DataPoint[];
@@ -328,8 +329,25 @@ export function Scatterplot({
 
   }, [data, xKey, yKey, xScale, yScale, colorScale, colorExtent, innerWidth, innerHeight, width, height, brushedIndices, onBrush]);
 
+  // CSV data generator for scatterplot
+  const getScatterplotCSVData = () =>
+    data.map((d, i) => ({
+      index: i + 1,
+      [FEATURE_LABELS[xKey]]: d[xKey],
+      [FEATURE_LABELS[yKey]]: d[yKey],
+      'Sound Pressure Level (dB)': d.soundPressureLevel,
+    }));
+
   return (
     <div className="relative flex flex-col flex-1">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename={`scatterplot_${String(xKey)}_vs_${String(yKey)}`}
+          csvData={getScatterplotCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <div className="flex-1">
         <svg
           ref={svgRef}

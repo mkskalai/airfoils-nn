@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import type { PCAResult } from '../../stores/featureStore';
 import { useFeatureStore, TARGET_FEATURE_ID } from '../../stores/featureStore';
 import { createTargetColorScale } from '../../utils/colors';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface PCAScatterplotProps {
   pcaResult: PCAResult;
@@ -448,6 +449,21 @@ export function PCAScatterplot({
 
       {/* Chart */}
       <div className="relative">
+        <div className="absolute top-1 right-1 z-10">
+          <DownloadButton
+            svgRef={svgRef}
+            filename={`pca_scatterplot_PC${pcX + 1}_PC${pcY + 1}`}
+            csvData={() =>
+              projections.map((proj, i) => ({
+                index: i + 1,
+                [`PC${pcX + 1}`]: proj[pcX] ?? 0,
+                [`PC${pcY + 1}`]: proj[pcY] ?? 0,
+                [colorFeatureName]: colorValues[i] ?? 0,
+              }))
+            }
+            formats={['png', 'svg', 'csv']}
+          />
+        </div>
         <svg ref={svgRef} width={width} height={height} className="bg-white rounded-lg" />
 
         {/* Tooltip */}

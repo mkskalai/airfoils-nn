@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import { useFeatureStore, TARGET_FEATURE_ID } from '../../stores/featureStore';
 import { dynamicCorrelationMatrix } from '../../utils/stats';
 import { correlationColorScale, formatValue, THEME_COLORS } from '../../utils/colors';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface CorrelationHeatmapProps {
   width: number;
@@ -283,8 +284,23 @@ export function CorrelationHeatmap({
     );
   }
 
+  // CSV data generator for correlation matrix
+  const getMatrixCSVData = () => ({
+    matrix,
+    rowLabels: featureNames,
+    colLabels: featureNames,
+  });
+
   return (
     <div className="relative flex flex-col flex-1">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename="correlation_heatmap"
+          matrixData={getMatrixCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <div className="flex-1">
         <svg
           ref={svgRef}

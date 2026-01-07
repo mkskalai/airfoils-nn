@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import type { PredictionPoint } from '../../stores/modelStore';
 import { THEME_COLORS, formatValue } from '../../utils/colors';
 import { ResidualVsFeature } from './ResidualVsFeature';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface ErrorAnalysisProps {
   trainPredictions: PredictionPoint[];
@@ -249,8 +250,33 @@ function ResidualHistogram({
 
   }, [trainResiduals, valResiduals, innerWidth, innerHeight]);
 
+  // CSV data generator for residual histogram
+  const getResidualCSVData = () => {
+    const allResiduals = [...trainResiduals, ...valResiduals];
+    if (allResiduals.length === 0) return [];
+    const maxAbs = Math.max(Math.abs(d3.min(allResiduals) || 0), Math.abs(d3.max(allResiduals) || 0));
+    const domain: [number, number] = [-maxAbs * 1.1, maxAbs * 1.1];
+    const binGenerator = d3.bin<number, number>().domain(domain).thresholds(30);
+    const trainBins = binGenerator(trainResiduals);
+    const valBins = binGenerator(valResiduals);
+    return trainBins.map((bin, i) => ({
+      bin_start: bin.x0,
+      bin_end: bin.x1,
+      train_count: bin.length,
+      val_count: valBins[i]?.length ?? 0,
+    }));
+  };
+
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="w-full relative">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename="residual_histogram"
+          csvData={getResidualCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <svg ref={svgRef} width={width} height={height} className="bg-white rounded-lg" />
     </div>
   );

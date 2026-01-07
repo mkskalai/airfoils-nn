@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import type { PredictionPoint } from '../../stores/modelStore';
 import { formatValue } from '../../utils/colors';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface PredictionScatterplotProps {
   data: PredictionPoint[];
@@ -235,21 +236,38 @@ export function PredictionScatterplot({
     }
   }, [data, xScale, yScale, innerWidth, innerHeight, color]);
 
+  // CSV data generator for predictions
+  const getPredictionCSVData = () =>
+    data.map((d, i) => ({
+      index: i + 1,
+      ground_truth: d.groundTruth,
+      predicted: d.predicted,
+      residual: d.predicted - d.groundTruth,
+    }));
+
   return (
     <div ref={containerRef} className="relative w-full">
       {/* Title and Stats */}
       <div className="flex justify-between items-center mb-2 px-1">
         <h4 className="text-sm font-semibold text-gray-700">{title}</h4>
-        {r2 !== null && rmse !== null && (
-          <div className="flex gap-3 text-xs">
-            <span className="text-gray-500">
-              R² = <span className="font-mono font-semibold" style={{ color }}>{formatValue(r2, 4)}</span>
-            </span>
-            <span className="text-gray-500">
-              RMSE = <span className="font-mono font-semibold" style={{ color }}>{formatValue(rmse, 4)}</span>
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {r2 !== null && rmse !== null && (
+            <div className="flex gap-3 text-xs">
+              <span className="text-gray-500">
+                R² = <span className="font-mono font-semibold" style={{ color }}>{formatValue(r2, 4)}</span>
+              </span>
+              <span className="text-gray-500">
+                RMSE = <span className="font-mono font-semibold" style={{ color }}>{formatValue(rmse, 4)}</span>
+              </span>
+            </div>
+          )}
+          <DownloadButton
+            svgRef={svgRef}
+            filename={`prediction_scatter_${title.toLowerCase().replace(/\s+/g, '_')}`}
+            csvData={getPredictionCSVData}
+            formats={['png', 'svg', 'csv']}
+          />
+        </div>
       </div>
 
       <svg ref={svgRef} width={width} height={height} className="bg-white rounded-lg" />

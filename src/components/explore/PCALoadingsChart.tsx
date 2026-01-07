@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import type { PCAResult } from '../../stores/featureStore';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface PCALoadingsChartProps {
   pcaResult: PCAResult;
@@ -259,8 +260,25 @@ function Biplot({
 
   }, [pcaResult, loadingsX, loadingsY, xScale, yScale, innerWidth, innerHeight, width, pcX, pcY, sourceFeatureNames]);
 
+  // CSV data generator for biplot loadings
+  const getBiplotCSVData = () =>
+    sourceFeatureNames.map((feature, i) => ({
+      feature,
+      [`PC${pcX + 1}_loading`]: loadingsX[i] || 0,
+      [`PC${pcY + 1}_loading`]: loadingsY[i] || 0,
+      magnitude: Math.sqrt((loadingsX[i] || 0) ** 2 + (loadingsY[i] || 0) ** 2),
+    }));
+
   return (
     <div className="relative">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename={`pca_biplot_PC${pcX + 1}_PC${pcY + 1}`}
+          csvData={getBiplotCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <svg ref={svgRef} width={width} height={height} className="bg-white rounded-lg" />
 
       {/* Tooltip */}
@@ -484,8 +502,26 @@ function Heatmap({
 
   }, [pcaResult, components, sourceFeatureNames, xScale, yScale, colorScale, innerWidth, innerHeight, width]);
 
+  // CSV data generator for heatmap loadings
+  const getHeatmapCSVData = () =>
+    sourceFeatureNames.map((feature, fi) => {
+      const row: Record<string, unknown> = { feature };
+      components.forEach((comp, ci) => {
+        row[`PC${ci + 1}`] = comp[fi];
+      });
+      return row;
+    });
+
   return (
     <div className="relative">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename="pca_loadings_heatmap"
+          csvData={getHeatmapCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <svg ref={svgRef} width={width} height={height} className="bg-white rounded-lg" />
 
       {/* Tooltip */}

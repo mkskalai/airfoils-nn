@@ -7,6 +7,7 @@ import {
   createChordLinePath,
   getAirfoilBounds,
 } from '../../utils/naca';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface AirfoilVizProps {
   chordLength: number;      // Chord length in meters
@@ -254,8 +255,28 @@ export function AirfoilViz({
 
   }, [airfoilPath, chordLinePath, bounds, scaledCoords, chordLength, angleOfAttack, velocity, width, height]);
 
+  // CSV data generator for airfoil coordinates
+  const getAirfoilCSVData = () => {
+    const coords: Record<string, unknown>[] = [];
+    scaledCoords.upper.forEach((p, i) => {
+      coords.push({ surface: 'upper', index: i, x: p.x, y: p.y });
+    });
+    scaledCoords.lower.forEach((p, i) => {
+      coords.push({ surface: 'lower', index: i, x: p.x, y: p.y });
+    });
+    return coords;
+  };
+
   return (
     <div className="relative">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename={`airfoil_aoa${angleOfAttack.toFixed(1)}_v${velocity.toFixed(1)}`}
+          csvData={getAirfoilCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <svg
         ref={svgRef}
         width={width}

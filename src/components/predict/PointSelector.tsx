@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import type { DataPoint } from '../../types';
 import { FEATURE_LABELS } from '../../types';
 import { createTargetColorScale, formatValue, THEME_COLORS } from '../../utils/colors';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface PointSelectorProps {
   data: DataPoint[];
@@ -268,8 +269,28 @@ export function PointSelector({
 
   }, [data, xKey, yKey, xScale, yScale, colorScale, colorExtent, innerWidth, innerHeight, width, height, selectedIndex, onSelectPoint]);
 
+  // CSV data generator for dataset points
+  const getDataCSVData = () =>
+    data.map((d, i) => ({
+      index: i + 1,
+      frequency: d.frequency,
+      angleOfAttack: d.angleOfAttack,
+      chordLength: d.chordLength,
+      freeStreamVelocity: d.freeStreamVelocity,
+      suctionSideDisplacementThickness: d.suctionSideDisplacementThickness,
+      soundPressureLevel: d.soundPressureLevel,
+    }));
+
   return (
     <div className="relative">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename="point_selector"
+          csvData={getDataCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <svg
         ref={svgRef}
         width={width}

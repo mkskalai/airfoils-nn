@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import type { PCAResult } from '../../stores/featureStore';
 import { THEME_COLORS } from '../../utils/colors';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface VarianceExplainedChartProps {
   pcaResult: PCAResult;
@@ -315,8 +316,24 @@ export function VarianceExplainedChart({
     width,
   ]);
 
+  // CSV data generator for variance explained
+  const getVarianceCSVData = () =>
+    explainedVarianceRatio.map((ratio, i) => ({
+      component: `PC${i + 1}`,
+      individual_variance: ratio,
+      cumulative_variance: cumulativeVarianceRatio[i],
+    }));
+
   return (
     <div ref={containerRef} className="relative w-full">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename="pca_variance_explained"
+          csvData={getVarianceCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <svg
         ref={svgRef}
         width={width}

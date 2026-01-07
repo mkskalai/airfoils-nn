@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import { useFeatureStore, TARGET_FEATURE_ID } from '../../stores/featureStore';
 import type { FeatureDefinition } from '../../stores/featureStore';
 import { createTargetColorScale, formatValue, THEME_COLORS } from '../../utils/colors';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface ScatterplotMatrixProps {
   /** Width of the entire matrix */
@@ -523,8 +524,32 @@ export function ScatterplotMatrix({
     );
   }
 
+  // CSV data generator for scatterplot matrix
+  const getMatrixCSVData = () => {
+    const rows: Record<string, unknown>[] = [];
+    for (let i = 0; i < dataLength; i++) {
+      const row: Record<string, unknown> = { index: i + 1 };
+      selectedFeatures.forEach(f => {
+        row[f.name] = f.values[i];
+      });
+      if (targetFeature) {
+        row['SPL (dB)'] = targetValues[i];
+      }
+      rows.push(row);
+    }
+    return rows;
+  };
+
   return (
     <div className="relative">
+      <div className="absolute top-1 right-1 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename="scatterplot_matrix"
+          csvData={getMatrixCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
       <svg
         ref={svgRef}
         width={Math.min(width, matrixWidth + PADDING.outer * 2)}

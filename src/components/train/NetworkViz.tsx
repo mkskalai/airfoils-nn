@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import { useModelStore } from '../../stores/modelStore';
 import { FEATURE_LABELS, FEATURE_NAMES } from '../../types';
 import { THEME_COLORS, formatValue } from '../../utils/colors';
+import { DownloadButton } from '../common/DownloadButton';
 
 // Throttle updates to prevent freezing during training
 const THROTTLE_MS = 250; // Increased from 100ms for better performance
@@ -515,19 +516,54 @@ export function NetworkViz() {
 
   const isTraining = trainingStatus === 'training';
 
+  // CSV data generator for network weights
+  const getWeightsCSVData = () => {
+    if (!throttledWeights) return [];
+    const rows: Record<string, unknown>[] = [];
+    throttledWeights.forEach((layer, layerIdx) => {
+      layer.weights.forEach((sourceWeights, sourceIdx) => {
+        sourceWeights.forEach((weight, targetIdx) => {
+          rows.push({
+            layer: layerIdx + 1,
+            source_neuron: sourceIdx + 1,
+            target_neuron: targetIdx + 1,
+            weight,
+          });
+        });
+      });
+      layer.biases.forEach((bias, neuronIdx) => {
+        rows.push({
+          layer: layerIdx + 1,
+          source_neuron: 'bias',
+          target_neuron: neuronIdx + 1,
+          weight: bias,
+        });
+      });
+    });
+    return rows;
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-        <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-        </svg>
-        Network Architecture
-        {isTraining && (
-          <span className="ml-2 text-sm font-normal text-accent">
-            • Training...
-          </span>
-        )}
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+          <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+          </svg>
+          Network Architecture
+          {isTraining && (
+            <span className="ml-2 text-sm font-normal text-accent">
+              • Training...
+            </span>
+          )}
+        </h3>
+        <DownloadButton
+          svgRef={svgRef}
+          filename="network_architecture"
+          csvData={getWeightsCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
+      </div>
 
       <div ref={containerRef} className="overflow-x-auto relative">
         <svg

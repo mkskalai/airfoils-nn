@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import type { TrainingHistory } from '../../types';
 import { THEME_COLORS, formatValue } from '../../utils/colors';
 import { useModelStore } from '../../stores/modelStore';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface LossChartProps {
   history: TrainingHistory[];
@@ -385,6 +386,14 @@ export function LossChart({
     }
   }, [history, xScale, yScale, trainLine, valLine, bestValPoint, innerWidth, innerHeight, width, logScale]);
 
+  // CSV data generator for loss history
+  const getLossCSVData = () =>
+    history.map(h => ({
+      epoch: h.epoch,
+      training_loss: h.loss,
+      validation_loss: h.valLoss,
+    }));
+
   return (
     <div ref={containerRef} className="relative w-full">
       {/* Log scale toggle */}
@@ -398,6 +407,16 @@ export function LossChart({
           />
           Log Scale
         </label>
+      </div>
+
+      {/* Download button */}
+      <div className="absolute top-2 right-2 z-10">
+        <DownloadButton
+          svgRef={svgRef}
+          filename="loss_chart"
+          csvData={getLossCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
       </div>
 
       <svg

@@ -106,4 +106,4 @@ See `PLAN.md` for detailed work packages. Current status:
   - ✅ WP-FE6: Pairwise Scatterplot Matrix
   - ✅ WP-FE7: Training Tab Feature Selection (input/target from feature store, dynamic model size, error analysis feature selector)
   - ✅ WP-FE8: Loss Chart Log Scale Toggle
-  - 🔲 WP-FE9: Plot Download Functionality
+  - ✅ WP-FE9: Plot Download Functionality (PNG, SVG, CSV export for all charts)

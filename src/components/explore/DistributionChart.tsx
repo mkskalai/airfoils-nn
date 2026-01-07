@@ -5,6 +5,7 @@ import { FEATURE_LABELS } from '../../types';
 import { histogram, kernelDensityEstimate } from '../../utils/stats';
 import { THEME_COLORS, formatValue } from '../../utils/colors';
 import { TARGET_FEATURE_ID } from '../../stores/featureStore';
+import { DownloadButton } from '../common/DownloadButton';
 
 interface DistributionChartProps {
   data: DataPoint[];
@@ -236,6 +237,18 @@ export function DistributionChart({
     pca: 'bg-green-100 text-green-700',
   };
 
+  // CSV data generator for histogram
+  const getHistogramCSVData = () => {
+    const values = getValues;
+    const histBins = histogram(values, NUM_BINS, [stats.min, stats.max]);
+    return histBins.map((bin, i) => ({
+      bin: i + 1,
+      x0: bin.x0,
+      x1: bin.x1,
+      count: bin.count,
+    }));
+  };
+
   return (
     <div className="bg-white rounded-lg p-3 border border-gray-100">
       <div className="flex items-center justify-between mb-2">
@@ -252,6 +265,12 @@ export function DistributionChart({
             </span>
           )}
         </div>
+        <DownloadButton
+          svgRef={svgRef}
+          filename={`distribution_${featureName.replace(/[^a-zA-Z0-9]/g, '_')}`}
+          csvData={getHistogramCSVData}
+          formats={['png', 'svg', 'csv']}
+        />
       </div>
 
       <svg ref={svgRef} width={width} height={height} />
