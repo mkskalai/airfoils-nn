@@ -12,6 +12,8 @@ interface FeatureSelectorProps {
   onChange?: (featureIds: string[]) => void;
   /** Custom class for the container */
   className?: string;
+  /** Minimum number of features that must be selected */
+  minSelected?: number;
 }
 
 /**
@@ -46,6 +48,7 @@ export function FeatureSelector({
   selectedIds,
   onChange,
   className = '',
+  minSelected = 0,
 }: FeatureSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -100,11 +103,16 @@ export function FeatureSelector({
 
   // Toggle feature selection
   const toggleFeature = useCallback((featureId: string) => {
-    const newSelection = currentSelection.includes(featureId)
+    const isDeselecting = currentSelection.includes(featureId);
+    // Prevent deselecting below minimum
+    if (isDeselecting && currentSelection.length <= minSelected) {
+      return;
+    }
+    const newSelection = isDeselecting
       ? currentSelection.filter(id => id !== featureId)
       : [...currentSelection, featureId];
     updateSelection(newSelection);
-  }, [currentSelection, updateSelection]);
+  }, [currentSelection, updateSelection, minSelected]);
 
   // Select all features
   const selectAll = useCallback(() => {
@@ -112,18 +120,28 @@ export function FeatureSelector({
     updateSelection(allIds);
   }, [sortedFeatures, updateSelection]);
 
-  // Clear all selections
+  // Clear all selections (respects minSelected - keeps first N if needed)
   const clearAll = useCallback(() => {
-    updateSelection([]);
-  }, [updateSelection]);
+    if (minSelected > 0) {
+      // Keep the first minSelected items
+      const toKeep = currentSelection.slice(0, minSelected);
+      updateSelection(toKeep);
+    } else {
+      updateSelection([]);
+    }
+  }, [updateSelection, minSelected, currentSelection]);
 
-  // Select only original features
+  // Select only original features (ensures at least minSelected)
   const selectOriginalOnly = useCallback(() => {
     const originalIds = sortedFeatures
       .filter(f => f.type === 'original')
       .map(f => f.id);
+    // If fewer than minSelected, keep current selection
+    if (originalIds.length < minSelected) {
+      return;
+    }
     updateSelection(originalIds);
-  }, [sortedFeatures, updateSelection]);
+  }, [sortedFeatures, updateSelection, minSelected]);
 
   const selectedCount = currentSelection.filter(id =>
     sortedFeatures.some(f => f.id === id)
@@ -188,21 +206,29 @@ export function FeatureSelector({
               sortedFeatures.map((feature) => {
                 const isSelected = currentSelection.includes(feature.id);
                 const isTarget = feature.id === TARGET_FEATURE_ID;
+                // Can't deselect if at minimum selection count
+                const cannotDeselect = isSelected && currentSelection.length <= minSelected;
 
                 return (
                   <label
                     key={feature.id}
-                    className={`flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors ${
+                    className={`flex items-center gap-3 px-3 py-2 rounded transition-colors ${
+                      cannotDeselect ? 'cursor-not-allowed' : 'cursor-pointer'
+                    } ${
                       isSelected
                         ? 'bg-accent-light'
                         : 'hover:bg-gray-50'
                     }`}
+                    title={cannotDeselect ? `Minimum ${minSelected} features required` : undefined}
                   >
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleFeature(feature.id)}
-                      className="w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent"
+                      disabled={cannotDeselect}
+                      className={`w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent ${
+                        cannotDeselect ? 'opacity-50' : ''
+                      }`}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

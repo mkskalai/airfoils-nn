@@ -59,7 +59,8 @@ Browser-based airfoil noise prediction app using neural networks. Users can expl
 **Explore Tab** (`src/components/explore/`):
 - `CorrelationHeatmap.tsx` - Dynamic NxN Pearson correlation matrix (updates with feature selection)
 - `DistributionChart.tsx` - Histograms with KDE overlay (supports transformed/PCA features)
-- `Scatterplot.tsx` - Interactive feature scatterplot
+- `Scatterplot.tsx` - Interactive feature scatterplot (single pair)
+- `ScatterplotMatrix.tsx` - Pairwise scatterplot matrix with histograms, correlations, linked brushing
 - `FeatureStatsTable.tsx` - Sortable statistics table for all features
 - `FeatureEngineering.tsx` - Transform and PCA feature creation UI
 - `PCAVisualization.tsx` - Variance explained and loadings charts
@@ -99,4 +100,5 @@ See `PLAN.md` for detailed work packages. Current status:
   - ✅ WP-FE3: Feature Engineering UI
   - ✅ WP-FE4: PCA Visualizations
   - ✅ WP-FE5: Dynamic Feature Selection for Plots
-  - 🔲 WP-FE6-9: Remaining enhancements (Pairwise Matrix, Training Integration, Log Scale, Downloads)
+  - ✅ WP-FE6: Pairwise Scatterplot Matrix
+  - 🔲 WP-FE7-9: Remaining enhancements (Training Integration, Log Scale, Downloads)

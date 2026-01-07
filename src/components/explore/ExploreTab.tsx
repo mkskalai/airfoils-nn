@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useDataStore } from '../../stores/dataStore';
 import { useFeatureStore, TARGET_FEATURE_ID } from '../../stores/featureStore';
-import { FEATURE_LABELS, type DataPoint } from '../../types';
-import { DATA_KEYS } from '../../utils/data';
-import { Scatterplot } from './Scatterplot';
+import { type DataPoint } from '../../types';
+import { ScatterplotMatrix } from './ScatterplotMatrix';
 import { CorrelationHeatmap } from './CorrelationHeatmap';
 import { DistributionChart } from './DistributionChart';
 import { FeatureEngineering } from './FeatureEngineering';
@@ -11,15 +10,15 @@ import { PCAVisualization } from './PCAVisualization';
 import { FeatureSelector } from '../common/FeatureSelector';
 import { FeatureStatsTable } from './FeatureStatsTable';
 
-type FeatureKey = keyof DataPoint;
+// Default features for scatterplot: Angle of Attack and SPL (target)
+const DEFAULT_SCATTER_FEATURES = ['angleOfAttack', 'soundPressureLevel'];
 
 export function ExploreTab() {
   const { rawData, stats, isLoading, error } = useDataStore();
   const { getAllFeatures, features } = useFeatureStore();
 
-  // Scatterplot feature selection
-  const [xFeature, setXFeature] = useState<FeatureKey>('frequency');
-  const [yFeature, setYFeature] = useState<FeatureKey>('soundPressureLevel');
+  // Scatterplot feature selection (default to AoA and SPL)
+  const [scatterFeatureIds, setScatterFeatureIds] = useState<string[]>(DEFAULT_SCATTER_FEATURES);
 
   // Linked brushing state
   const [brushedIndices, setBrushedIndices] = useState<Set<number>>(new Set());
@@ -193,43 +192,18 @@ export function ExploreTab() {
         <div ref={scatterContainerRef} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
           <div className="flex items-start justify-between mb-2">
             <h3 className="text-xl font-semibold text-gray-800">Scatterplot</h3>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <label className="text-base text-gray-700 font-medium w-6">X:</label>
-                <select
-                  value={xFeature}
-                  onChange={(e) => setXFeature(e.target.value as FeatureKey)}
-                  className="text-base border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-accent"
-                >
-                  {DATA_KEYS.map((key) => (
-                    <option key={key} value={key}>
-                      {FEATURE_LABELS[key]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-base text-gray-700 font-medium w-6">Y:</label>
-                <select
-                  value={yFeature}
-                  onChange={(e) => setYFeature(e.target.value as FeatureKey)}
-                  className="text-base border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-accent"
-                >
-                  {DATA_KEYS.map((key) => (
-                    <option key={key} value={key}>
-                      {FEATURE_LABELS[key]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <FeatureSelector
+              label="Features"
+              includeTarget={true}
+              selectedIds={scatterFeatureIds}
+              onChange={setScatterFeatureIds}
+              minSelected={2}
+            />
           </div>
 
-          <Scatterplot
-            data={rawData}
-            xKey={xFeature}
-            yKey={yFeature}
+          <ScatterplotMatrix
             width={scatterWidth}
+            featureIds={scatterFeatureIds}
             brushedIndices={brushedIndices}
             onBrush={handleBrush}
           />
