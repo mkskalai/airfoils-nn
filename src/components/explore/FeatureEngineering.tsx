@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useFeatureStore, TARGET_FEATURE_ID } from '../../stores/featureStore';
 import type { FeatureDefinition, FeatureType } from '../../stores/featureStore';
 import { TransformDialog } from './TransformDialog';
@@ -32,10 +32,14 @@ function TypeBadge({ type }: { type: FeatureType }) {
  */
 function FeatureItem({
   feature,
-  onDelete,
+  isSelected,
+  onToggleSelect,
+  showCheckbox,
 }: {
   feature: FeatureDefinition;
-  onDelete: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+  showCheckbox?: boolean;
 }) {
   const isOriginal = feature.type === 'original';
   const isTarget = feature.id === TARGET_FEATURE_ID;
@@ -45,10 +49,21 @@ function FeatureItem({
       className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors ${
         isTarget
           ? 'bg-warm/5 border-warm/20'
+          : isSelected
+          ? 'bg-red-50 border-red-200'
           : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
       }`}
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
+        {/* Checkbox for deletion - only for non-original features */}
+        {showCheckbox && !isOriginal && (
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onToggleSelect}
+            className="w-4 h-4 rounded border-gray-300 text-red-500 focus:ring-red-500 cursor-pointer"
+          />
+        )}
         <span
           className={`w-2 h-2 rounded-full flex-shrink-0 ${
             feature.type === 'original'
@@ -77,24 +92,6 @@ function FeatureItem({
         >
           [{feature.stats.min.toFixed(1)}, {feature.stats.max.toFixed(1)}]
         </span>
-
-        {/* Delete button - only for non-original features */}
-        {!isOriginal && (
-          <button
-            onClick={onDelete}
-            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-            title="Delete feature"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -108,7 +105,9 @@ export function FeatureEngineering() {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showTransformDialog, setShowTransformDialog] = useState(false);
   const [showPCADialog, setShowPCADialog] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [selectedForDelete, setSelectedForDelete] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
     features,
@@ -124,15 +123,28 @@ export function FeatureEngineering() {
   const pcaFeatures = getPCAFeatures();
   const targetFeature = features[TARGET_FEATURE_ID];
 
-  const handleDeleteFeature = (featureId: string) => {
-    if (deleteConfirm === featureId) {
-      deleteFeature(featureId);
-      setDeleteConfirm(null);
+  const hasDeletableFeatures = transformedFeatures.length > 0 || pcaFeatures.length > 0;
+
+  const toggleSelectForDelete = (featureId: string) => {
+    const newSelected = new Set(selectedForDelete);
+    if (newSelected.has(featureId)) {
+      newSelected.delete(featureId);
     } else {
-      setDeleteConfirm(featureId);
-      // Auto-dismiss confirmation after 3 seconds
-      setTimeout(() => setDeleteConfirm(null), 3000);
+      newSelected.add(featureId);
     }
+    setSelectedForDelete(newSelected);
+  };
+
+  const handleDeleteSelected = () => {
+    selectedForDelete.forEach((id) => {
+      deleteFeature(id);
+    });
+    setSelectedForDelete(new Set());
+    setShowDeleteConfirm(false);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
   };
 
   if (!initialized) {
@@ -180,7 +192,7 @@ export function FeatureEngineering() {
                 <FeatureItem
                   key={feature.id}
                   feature={feature}
-                  onDelete={() => {}}
+                  showCheckbox={hasDeletableFeatures}
                 />
               ))}
             </div>
@@ -193,7 +205,7 @@ export function FeatureEngineering() {
                 </h4>
                 <FeatureItem
                   feature={targetFeature}
-                  onDelete={() => {}}
+                  showCheckbox={hasDeletableFeatures}
                 />
               </div>
             )}
@@ -205,29 +217,13 @@ export function FeatureEngineering() {
                   Transformed ({transformedFeatures.length})
                 </h4>
                 {transformedFeatures.map((feature) => (
-                  <div key={feature.id} className="relative">
-                    <FeatureItem
-                      feature={feature}
-                      onDelete={() => handleDeleteFeature(feature.id)}
-                    />
-                    {deleteConfirm === feature.id && (
-                      <div className="absolute inset-0 bg-red-50/95 rounded-lg flex items-center justify-center gap-2 border border-red-200">
-                        <span className="text-sm text-red-700">Delete?</span>
-                        <button
-                          onClick={() => handleDeleteFeature(feature.id)}
-                          className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(null)}
-                          className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <FeatureItem
+                    key={feature.id}
+                    feature={feature}
+                    showCheckbox={hasDeletableFeatures}
+                    isSelected={selectedForDelete.has(feature.id)}
+                    onToggleSelect={() => toggleSelectForDelete(feature.id)}
+                  />
                 ))}
               </div>
             )}
@@ -239,33 +235,59 @@ export function FeatureEngineering() {
                   PCA Components ({pcaFeatures.length})
                 </h4>
                 {pcaFeatures.map((feature) => (
-                  <div key={feature.id} className="relative">
-                    <FeatureItem
-                      feature={feature}
-                      onDelete={() => handleDeleteFeature(feature.id)}
-                    />
-                    {deleteConfirm === feature.id && (
-                      <div className="absolute inset-0 bg-red-50/95 rounded-lg flex items-center justify-center gap-2 border border-red-200">
-                        <span className="text-sm text-red-700">Delete?</span>
-                        <button
-                          onClick={() => handleDeleteFeature(feature.id)}
-                          className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(null)}
-                          className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <FeatureItem
+                    key={feature.id}
+                    feature={feature}
+                    showCheckbox={hasDeletableFeatures}
+                    isSelected={selectedForDelete.has(feature.id)}
+                    onToggleSelect={() => toggleSelectForDelete(feature.id)}
+                  />
                 ))}
               </div>
             )}
           </div>
+
+          {/* Delete Selected Button - shown when there are selections */}
+          {selectedForDelete.size > 0 && (
+            <div className="relative pt-2 border-t border-gray-100">
+              <button
+                ref={deleteButtonRef}
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full py-2 bg-red-50 text-red-600 font-medium rounded-lg border border-red-200 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                Delete {selectedForDelete.size} Feature{selectedForDelete.size !== 1 ? 's' : ''}
+              </button>
+
+              {/* Confirm overlay - positioned at the same spot */}
+              {showDeleteConfirm && (
+                <div className="absolute inset-0 bg-red-50 rounded-lg border border-red-300 flex items-center justify-center gap-3">
+                  <span className="text-sm text-red-700 font-medium">
+                    Delete {selectedForDelete.size} feature{selectedForDelete.size !== 1 ? 's' : ''}?
+                  </span>
+                  <button
+                    onClick={handleDeleteSelected}
+                    className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={cancelDelete}
+                    className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-2 pt-2 border-t border-gray-100">

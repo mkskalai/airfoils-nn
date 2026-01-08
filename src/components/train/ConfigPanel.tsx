@@ -211,7 +211,7 @@ function TargetFeatureSelector({
 }
 
 export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: ConfigPanelProps) {
-  const { rawData } = useDataStore();
+  const { rawData, randomSeed, setRandomSeed } = useDataStore();
   const {
     config,
     setConfig,
@@ -612,6 +612,25 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
               <span>10%</span>
               <span>40%</span>
             </div>
+          </div>
+
+          {/* Random Seed */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Random Seed
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={randomSeed}
+              onChange={(e) => {
+                const seed = parseInt(e.target.value) || 0;
+                setRandomSeed(seed);
+              }}
+              disabled={isTraining}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent disabled:opacity-50 disabled:bg-gray-50 font-mono"
+            />
+            <p className="text-xs text-gray-500 mt-1">Controls train/val split randomization</p>
           </div>
 
           {/* Prediction Update Interval */}

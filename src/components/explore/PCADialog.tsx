@@ -151,11 +151,10 @@ export function PCADialog({ onClose }: PCADialogProps) {
   // Get all available features for PCA (original + transformed)
   const availableFeatures = [...getOriginalFeatures(), ...getTransformedFeatures()];
 
-  // State - default to first 5 (original) features selected and max components for selection
-  const [selectedFeatureIds, setSelectedFeatureIds] = useState<Set<string>>(
-    new Set(availableFeatures.slice(0, 5).map((f) => f.id))
-  );
-  const [numComponents, setNumComponents] = useState(Math.min(5, availableFeatures.length));
+  // State - default to first 5 (original) features selected and components equal to selected count
+  const defaultSelected = new Set(availableFeatures.slice(0, 5).map((f) => f.id));
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<Set<string>>(defaultSelected);
+  const [numComponents, setNumComponents] = useState(defaultSelected.size);
   const [pcaResult, setPCAResult] = useState<PCAResult | null>(null);
   const [selectedComponents, setSelectedComponents] = useState<Set<number>>(new Set([0, 1]));
   const [customName, setCustomName] = useState('');
@@ -173,10 +172,8 @@ export function PCADialog({ onClose }: PCADialogProps) {
     }
     setSelectedFeatureIds(newSelected);
 
-    // Adjust numComponents if needed
-    if (numComponents > newSelected.size) {
-      setNumComponents(Math.max(1, newSelected.size));
-    }
+    // Default numComponents to the number of selected features
+    setNumComponents(Math.max(1, newSelected.size));
   };
 
   const handleSelectAll = () => {
@@ -252,7 +249,7 @@ export function PCADialog({ onClose }: PCADialogProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-[42rem] min-w-[28rem] max-w-[90vw] max-h-[90vh] overflow-y-auto resize-x overflow-x-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800">Principal Component Analysis</h2>

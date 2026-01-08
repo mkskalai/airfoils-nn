@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useDataStore } from '../../stores/dataStore';
-import { useFeatureStore, TARGET_FEATURE_ID } from '../../stores/featureStore';
+import { useFeatureStore } from '../../stores/featureStore';
 import { type DataPoint } from '../../types';
 import { ScatterplotMatrix } from './ScatterplotMatrix';
 import { CorrelationHeatmap } from './CorrelationHeatmap';
@@ -13,9 +13,15 @@ import { FeatureStatsTable } from './FeatureStatsTable';
 // Default features for scatterplot: Angle of Attack and SPL (target)
 const DEFAULT_SCATTER_FEATURES = ['angleOfAttack', 'soundPressureLevel'];
 
+// Original feature IDs for default plot initialization (new features are NOT auto-added)
+const DEFAULT_PLOT_FEATURES = [
+  'frequency', 'angleOfAttack', 'chordLength', 'freeStreamVelocity',
+  'suctionSideDisplacementThickness', 'soundPressureLevel'
+];
+
 export function ExploreTab() {
   const { rawData, stats, isLoading, error } = useDataStore();
-  const { getAllFeatures, features } = useFeatureStore();
+  const { features } = useFeatureStore();
 
   // Scatterplot feature selection (default to AoA and SPL)
   const [scatterFeatureIds, setScatterFeatureIds] = useState<string[]>(DEFAULT_SCATTER_FEATURES);
@@ -26,22 +32,19 @@ export function ExploreTab() {
   // KDE toggle
   const [showKDE, setShowKDE] = useState(true);
 
-  // Get all available feature IDs for initialization (including target)
-  const allFeatureIdsWithTarget = useMemo(() => {
-    const ids = getAllFeatures().map(f => f.id);
-    if (features[TARGET_FEATURE_ID]) {
-      ids.push(TARGET_FEATURE_ID);
-    }
-    return ids;
-  }, [getAllFeatures, features]);
+  // Per-section feature selection - start with original features only (not auto-updated with new features)
+  const [corrFeatureIds, setCorrFeatureIds] = useState<string[]>(DEFAULT_PLOT_FEATURES);
+  const [distFeatureIds, setDistFeatureIds] = useState<string[]>(DEFAULT_PLOT_FEATURES);
 
-  // Per-section feature selection (controlled mode) - start null to detect uninitialized
-  const [corrFeatureIds, setCorrFeatureIds] = useState<string[] | null>(null);
-  const [distFeatureIds, setDistFeatureIds] = useState<string[] | null>(null);
-
-  // Effective feature IDs (use all features including target if not yet customized by user)
-  const effectiveCorrFeatureIds = corrFeatureIds ?? allFeatureIdsWithTarget;
-  const effectiveDistFeatureIds = distFeatureIds ?? allFeatureIdsWithTarget;
+  // Effective feature IDs (filter out any that no longer exist)
+  const effectiveCorrFeatureIds = useMemo(() =>
+    corrFeatureIds.filter(id => features[id]),
+    [corrFeatureIds, features]
+  );
+  const effectiveDistFeatureIds = useMemo(() =>
+    distFeatureIds.filter(id => features[id]),
+    [distFeatureIds, features]
+  );
 
   // Container refs for measuring widths
   const scatterContainerRef = useRef<HTMLDivElement>(null);

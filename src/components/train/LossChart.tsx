@@ -87,12 +87,12 @@ export function LossChart({
       // For log scale, ensure minimum is positive
       const logMin = Math.max(minL, LOG_EPSILON);
       const logMax = maxL > 0 ? maxL : 1;
-      // Add some padding in log space
-      const logPadding = Math.pow(logMax / logMin, 0.05);
+      // Add small padding in log space but don't use .nice() to avoid distorted bounds
+      const logPadding = Math.pow(logMax / logMin, 0.02);
       yScale = d3.scaleLog()
         .domain([logMin / logPadding, logMax * logPadding])
-        .range([innerHeight, 0])
-        .nice();
+        .range([innerHeight, 0]);
+      // Don't use .nice() for log scale as it can create ridiculous bounds
     } else {
       const padding = (maxL - minL) * 0.1 || 0.1;
       yScale = d3.scaleLinear()
@@ -190,11 +190,11 @@ export function LossChart({
     if (logScale) {
       // For log scale, use fewer ticks and scientific notation for small values
       yAxisGenerator.ticks(5, (d: number) => {
-        if (d >= 0.01) return formatValue(d, 3);
+        if (d >= 0.01) return formatValue(d, 2);
         return d.toExponential(1);
       });
     } else {
-      yAxisGenerator.ticks(6).tickFormat((d) => formatValue(d as number, 4));
+      yAxisGenerator.ticks(6).tickFormat((d) => formatValue(d as number, 2));
     }
     const yAxis = g.append('g').call(yAxisGenerator);
 
@@ -396,16 +396,16 @@ export function LossChart({
 
   return (
     <div ref={containerRef} className="relative w-full">
-      {/* Log scale toggle */}
-      <div className="absolute top-2 left-20 z-10">
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+      {/* Log scale toggle - positioned above Y axis */}
+      <div className="absolute top-0 left-0 z-10">
+        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none bg-white/80 px-1 py-0.5 rounded">
           <input
             type="checkbox"
             checked={logScale}
             onChange={(e) => setLogScale(e.target.checked)}
             className="w-3.5 h-3.5 rounded border-gray-300 text-accent focus:ring-accent cursor-pointer"
           />
-          Log Scale
+          Log
         </label>
       </div>
 

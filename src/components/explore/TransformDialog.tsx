@@ -78,7 +78,7 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
   const sourceFeatures = [...getOriginalFeatures(), ...getTransformedFeatures()];
 
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(new Set());
-  const [transformType, setTransformType] = useState<TransformType>('minmax');
+  const [transformType, setTransformType] = useState<TransformType>('zscore');
   const [customExpression, setCustomExpression] = useState('');
   const [inverseExpression, setInverseExpression] = useState('');
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
@@ -86,9 +86,6 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
   const [expressionError, setExpressionError] = useState<string | null>(null);
   const [inverseError, setInverseError] = useState<string | null>(null);
 
-  // For preview, show first selected feature
-  const previewSourceId = Array.from(selectedSourceIds)[0] || '';
-  const selectedFeature = getFeature(previewSourceId);
 
   // Check if any selected feature is target or derived from target (recursive)
   const isTargetTransform = useMemo(() => {
@@ -160,28 +157,6 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
     };
   }, [transformType, customExpression, inverseExpression]);
 
-  // Compute preview of transformed values
-  const previewValues = useMemo(() => {
-    if (!selectedFeature || transformType === 'none') {
-      return selectedFeature?.values || [];
-    }
-
-    // For custom, only preview if expression is valid
-    if (transformType === 'custom') {
-      if (!customExpression.trim() || expressionError) {
-        return selectedFeature?.values || [];
-      }
-    }
-
-    return selectedFeature.values.map((v) =>
-      applyTransform(v, transformType, selectedFeature.stats, customParams)
-    );
-  }, [selectedFeature, transformType, customParams, customExpression, expressionError]);
-
-  const previewStats = useMemo(() => {
-    if (previewValues.length === 0) return null;
-    return computeStats(previewValues);
-  }, [previewValues]);
 
   const handleExpressionChange = (expr: string) => {
     setCustomExpression(expr);
@@ -252,7 +227,7 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-[32rem] min-w-[24rem] max-w-[90vw] max-h-[90vh] overflow-y-auto resize-x overflow-x-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800">Add Transform</h2>
@@ -310,7 +285,7 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Transform Type</label>
             <div className="grid grid-cols-3 gap-2">
-              {(['minmax', 'zscore', 'custom'] as TransformType[]).map((type) => (
+              {(['zscore', 'minmax', 'custom'] as TransformType[]).map((type) => (
                 <button
                   key={type}
                   onClick={() => setTransformType(type)}
@@ -328,6 +303,13 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
 
           {/* Transform Description */}
           <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+            {transformType === 'zscore' && (
+              <>
+                <strong>Z-Score Standardization:</strong> Standardizes to mean=0, std=1.
+                <br />
+                <code className="text-xs bg-gray-200 px-1 rounded">x' = (x - μ) / σ</code>
+              </>
+            )}
             {transformType === 'minmax' && (
               <>
                 <strong>Min-Max Normalization:</strong> Scales values to [0, 1] range.
@@ -335,13 +317,6 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
                 <code className="text-xs bg-gray-200 px-1 rounded">
                   x' = (x - min) / (max - min)
                 </code>
-              </>
-            )}
-            {transformType === 'zscore' && (
-              <>
-                <strong>Z-Score Standardization:</strong> Standardizes to mean=0, std=1.
-                <br />
-                <code className="text-xs bg-gray-200 px-1 rounded">x' = (x - μ) / σ</code>
               </>
             )}
             {transformType === 'custom' && (
@@ -453,43 +428,63 @@ export function TransformDialog({ onClose }: TransformDialogProps) {
             </div>
           )}
 
-          {/* Preview - shows first selected feature */}
-          <div className="border border-gray-200 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">
-                Preview {selectedSourceIds.size > 1 ? `(${selectedFeature?.name || 'first selected'})` : ''}
-              </span>
-              {previewStats && (
-                <span className="text-xs text-gray-500 font-mono">
-                  [{previewStats.min.toFixed(3)}, {previewStats.max.toFixed(3)}]
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {/* Original distribution */}
-              <div>
-                <div className="text-xs text-gray-500 mb-1">Original</div>
-                <MiniHistogram values={selectedFeature?.values || []} color="#0d47a1" />
-                {selectedFeature && (
-                  <div className="text-xs text-gray-400 mt-1 text-center font-mono">
-                    μ={selectedFeature.stats.mean.toFixed(2)} σ={selectedFeature.stats.std.toFixed(2)}
-                  </div>
-                )}
+          {/* Preview - shows all selected features */}
+          {selectedSourceIds.size > 0 && (
+            <div className="border border-gray-200 rounded-lg p-3">
+              <div className="text-sm font-medium text-gray-700 mb-3">
+                Preview ({selectedSourceIds.size} feature{selectedSourceIds.size !== 1 ? 's' : ''})
               </div>
 
-              {/* Transformed distribution */}
-              <div>
-                <div className="text-xs text-gray-500 mb-1">Transformed</div>
-                <MiniHistogram values={previewValues} color="#03a9f4" />
-                {previewStats && (
-                  <div className="text-xs text-gray-400 mt-1 text-center font-mono">
-                    μ={previewStats.mean.toFixed(2)} σ={previewStats.std.toFixed(2)}
-                  </div>
-                )}
+              <div className="space-y-4 max-h-64 overflow-y-auto">
+                {Array.from(selectedSourceIds).map((sourceId) => {
+                  const feature = getFeature(sourceId);
+                  if (!feature) return null;
+
+                  // Compute preview values for this feature
+                  let thisPreviewValues = feature.values;
+                  if (transformType !== 'none') {
+                    if (transformType === 'custom') {
+                      if (customExpression.trim() && !expressionError) {
+                        thisPreviewValues = feature.values.map((v) =>
+                          applyTransform(v, transformType, feature.stats, customParams)
+                        );
+                      }
+                    } else {
+                      thisPreviewValues = feature.values.map((v) =>
+                        applyTransform(v, transformType, feature.stats, customParams)
+                      );
+                    }
+                  }
+                  const thisPreviewStats = computeStats(thisPreviewValues);
+
+                  return (
+                    <div key={sourceId} className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-gray-600 truncate" title={feature.name}>
+                          {feature.name}
+                        </span>
+                        <span className="text-xs text-gray-400 font-mono">
+                          [{thisPreviewStats.min.toFixed(2)}, {thisPreviewStats.max.toFixed(2)}]
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Original distribution */}
+                        <div>
+                          <div className="text-xs text-gray-400 mb-1">Original</div>
+                          <MiniHistogram values={feature.values} color="#0d47a1" height={50} bins={15} />
+                        </div>
+                        {/* Transformed distribution */}
+                        <div>
+                          <div className="text-xs text-gray-400 mb-1">Transformed</div>
+                          <MiniHistogram values={thisPreviewValues} color="#03a9f4" height={50} bins={15} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Error message */}
           {error && (

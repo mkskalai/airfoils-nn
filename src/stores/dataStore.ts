@@ -18,6 +18,7 @@ interface DataState {
   stats: DatasetStats | null;
   normalizationConfig: NormalizationConfig;
   validationSplit: number;
+  randomSeed: number;
   isLoading: boolean;
   error: string | null;
 }
@@ -30,6 +31,7 @@ interface DataActions {
   setTargetNormalization: (norm: FeatureNormalization) => void;
   setNormalizationMode: (mode: 'global' | 'per-feature') => void;
   setValidationSplit: (split: number) => void;
+  setRandomSeed: (seed: number) => void;
   resplitData: (seed?: number) => void;
   setError: (error: string | null) => void;
   recomputeNormalization: () => void;
@@ -45,6 +47,7 @@ const initialState: DataState = {
   stats: null,
   normalizationConfig: createDefaultNormalizationConfig(),
   validationSplit: 0.2,
+  randomSeed: 42,
   isLoading: false,
   error: null,
 };
@@ -63,13 +66,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const rawData = parseDataset(text);
       const stats = calculateStats(rawData);
 
-      const { normalizationConfig, validationSplit } = get();
+      const { normalizationConfig, validationSplit, randomSeed } = get();
       const normalizedData = normalizeDataWithConfig(rawData, stats, normalizationConfig);
 
       const { train, validation } = trainValidationSplit(
         normalizedData,
         validationSplit,
-        42
+        randomSeed
       );
 
       set({
@@ -92,13 +95,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   recomputeNormalization: () => {
-    const { rawData, stats, normalizationConfig, validationSplit } = get();
+    const { rawData, stats, normalizationConfig, validationSplit, randomSeed } = get();
     if (stats && rawData.length > 0) {
       const normalizedData = normalizeDataWithConfig(rawData, stats, normalizationConfig);
       const { train, validation } = trainValidationSplit(
         normalizedData,
         validationSplit,
-        42
+        randomSeed
       );
       set({
         normalizedData,
@@ -162,12 +165,12 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   setValidationSplit: (split: number) => {
-    const { normalizedData } = get();
+    const { normalizedData, randomSeed } = get();
     if (normalizedData.length > 0) {
       const { train, validation } = trainValidationSplit(
         normalizedData,
         split,
-        42
+        randomSeed
       );
       set({
         validationSplit: split,
@@ -176,6 +179,24 @@ export const useDataStore = create<DataStore>((set, get) => ({
       });
     } else {
       set({ validationSplit: split });
+    }
+  },
+
+  setRandomSeed: (seed: number) => {
+    const { normalizedData, validationSplit } = get();
+    if (normalizedData.length > 0) {
+      const { train, validation } = trainValidationSplit(
+        normalizedData,
+        validationSplit,
+        seed
+      );
+      set({
+        randomSeed: seed,
+        trainData: train,
+        validationData: validation,
+      });
+    } else {
+      set({ randomSeed: seed });
     }
   },
 
