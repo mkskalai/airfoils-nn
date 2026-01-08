@@ -211,24 +211,26 @@ function TargetFeatureSelector({
 }
 
 export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: ConfigPanelProps) {
-  const { rawData, randomSeed, setRandomSeed } = useDataStore();
-  const {
-    config,
-    setConfig,
-    updateLayerConfig,
-    addLayer,
-    removeLayer,
-    trainingStatus,
-    setDropoutMode,
-    setGlobalDropout,
-    predictionUpdateInterval,
-    setPredictionUpdateInterval,
-    trainingInputFeatureIds,
-    trainingTargetFeatureId,
-    setTrainingInputFeatureIds,
-    setTrainingTargetFeatureId,
-  } = useModelStore();
-  const { initialized: featureStoreInitialized } = useFeatureStore();
+  // Use individual selectors to avoid re-rendering on unrelated store changes
+  const rawData = useDataStore(state => state.rawData);
+  const randomSeed = useDataStore(state => state.randomSeed);
+  const setRandomSeed = useDataStore(state => state.setRandomSeed);
+  const config = useModelStore(state => state.config);
+  const setConfig = useModelStore(state => state.setConfig);
+  const updateLayerConfig = useModelStore(state => state.updateLayerConfig);
+  const addLayer = useModelStore(state => state.addLayer);
+  const removeLayer = useModelStore(state => state.removeLayer);
+  const trainingStatus = useModelStore(state => state.trainingStatus);
+  const setDropoutMode = useModelStore(state => state.setDropoutMode);
+  const setGlobalDropout = useModelStore(state => state.setGlobalDropout);
+  const predictionUpdateInterval = useModelStore(state => state.predictionUpdateInterval);
+  const setPredictionUpdateInterval = useModelStore(state => state.setPredictionUpdateInterval);
+  const trainingInputFeatureIds = useModelStore(state => state.trainingInputFeatureIds);
+  const trainingTargetFeatureId = useModelStore(state => state.trainingTargetFeatureId);
+  const setTrainingInputFeatureIds = useModelStore(state => state.setTrainingInputFeatureIds);
+  const setTrainingTargetFeatureId = useModelStore(state => state.setTrainingTargetFeatureId);
+
+  const featureStoreInitialized = useFeatureStore(state => state.initialized);
 
   const isTraining = trainingStatus === 'training';
   const isPaused = trainingStatus === 'paused';
@@ -243,6 +245,7 @@ export function ConfigPanel({ onTrain, onPause, onStop, onReset, dataReady }: Co
         <button
           onClick={onTrain}
           disabled={!canTrain}
+          data-tutorial="train-button"
           className="w-full py-2.5 sm:py-3 bg-accent text-white text-sm sm:text-base font-semibold rounded-lg
                    hover:bg-accent/90 disabled:bg-gray-300 disabled:cursor-not-allowed
                    transition-all duration-200 shadow-lg shadow-accent/20 flex items-center justify-center gap-2"

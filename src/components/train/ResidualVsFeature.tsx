@@ -268,7 +268,9 @@ export function ResidualVsFeature({
   valPredictions,
   activeTab,
 }: ResidualVsFeatureProps) {
-  const { errorAnalysisFeatureIds, setErrorAnalysisFeatureIds } = useModelStore();
+  // Use individual selectors to avoid re-rendering on unrelated store changes
+  const errorAnalysisFeatureIds = useModelStore(state => state.errorAnalysisFeatureIds);
+  const setErrorAnalysisFeatureIds = useModelStore(state => state.setErrorAnalysisFeatureIds);
 
   const showTrain = activeTab === 'train' || activeTab === 'both';
   const showVal = activeTab === 'validation' || activeTab === 'both';

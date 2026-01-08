@@ -3,28 +3,54 @@ import { TabNavigation } from './components/common/TabNavigation';
 import { ExploreTab } from './components/explore/ExploreTab';
 import { TrainTab } from './components/train/TrainTab';
 import { PredictTab } from './components/predict/PredictTab';
+import { TutorialOverlay, WelcomeDialog, TutorialButton } from './components/tutorial';
 import { useDataStore } from './stores/dataStore';
+import { useTutorialStore } from './stores/tutorialStore';
 import type { TabId } from './types';
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('explore');
-  const { loadData, isLoading, error, setError } = useDataStore();
+
+  // Use individual selectors to avoid re-rendering on unrelated store changes
+  const loadData = useDataStore(state => state.loadData);
+  const isLoading = useDataStore(state => state.isLoading);
+  const error = useDataStore(state => state.error);
+  const setError = useDataStore(state => state.setError);
+
+  const hasSeenTutorial = useTutorialStore(state => state.hasSeenTutorial);
+  const showWelcomeDialog = useTutorialStore(state => state.showWelcomeDialog);
+  const tutorialActive = useTutorialStore(state => state.isActive);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  // Show welcome dialog for new users after data loads
+  useEffect(() => {
+    if (!isLoading && !error && !hasSeenTutorial && !tutorialActive) {
+      // Small delay to let the UI settle
+      const timer = setTimeout(() => {
+        showWelcomeDialog();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, error, hasSeenTutorial, tutorialActive, showWelcomeDialog]);
+
   return (
     <div className="min-h-screen bg-bg">
       {/* Hero Header */}
       <header className="bg-primary-dark text-white py-4 sm:py-6 md:py-8 px-4 sm:px-6">
-        <div className="text-center max-w-4xl mx-auto">
+        <div className="text-center max-w-4xl mx-auto relative">
           <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-light mb-1 sm:mb-2">
             Tinker With <span className="font-bold text-accent">Airfoil Noise Prediction</span> Right Here in Your Browser.
           </h1>
           <p className="text-sm sm:text-base md:text-xl text-gray-300 font-light">
             Train a Neural Network. Explore the Data. Make Predictions.
           </p>
+          {/* Tutorial Button */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2">
+            <TutorialButton />
+          </div>
         </div>
       </header>
 
@@ -75,6 +101,10 @@ function App() {
         {activeTab === 'train' && <TrainTab />}
         {activeTab === 'predict' && <PredictTab />}
       </main>
+
+      {/* Tutorial Components */}
+      <WelcomeDialog />
+      <TutorialOverlay onTabChange={setActiveTab} />
     </div>
   );
 }

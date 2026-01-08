@@ -87,6 +87,43 @@ Custom TensorFlow Playground-inspired palette defined in `src/index.css`:
 - `deepBlue` - (#1a237e) - negative values, cold
 - `deepOrange` - (#e65100) - positive values, warm
 
+## Performance Considerations
+
+### Zustand Store Subscriptions
+
+**Critical**: Always use selective Zustand subscriptions to avoid re-renders during training:
+
+```tsx
+// ❌ Bad - re-renders on ANY store change (causes training slowdown)
+const { config, trainingStatus } = useModelStore();
+
+// ✅ Good - only re-renders when specific values change
+const config = useModelStore(state => state.config);
+const trainingStatus = useModelStore(state => state.trainingStatus);
+```
+
+This pattern is essential in components that render during training (TrainTab, ConfigPanel, NetworkPreview, etc.) because the model store updates on every epoch.
+
+### CSS Animations During Training
+
+Avoid CSS animations (`animate-spin`, `animate-pulse`, etc.) in components visible during training. These cause continuous browser repaints that block the training loop.
+
+### D3 Visualization Updates
+
+For expensive D3 visualizations like `NetworkViz.tsx`:
+1. Use `IntersectionObserver` to skip updates when off-screen
+2. Throttle updates (250ms minimum) during training
+3. Disable pointer events during training
+4. Use `requestIdleCallback` for non-critical updates
+
+### Files with Performance-Critical Code
+
+- `src/components/train/TrainTab.tsx` - Uses selective subscriptions
+- `src/components/train/ConfigPanel.tsx` - Uses selective subscriptions
+- `src/components/train/NetworkViz.tsx` - Throttled updates, visibility detection
+- `src/components/tutorial/TutorialOverlay.tsx` - Static icons (no animations) during training
+- `src/hooks/useTraining.ts` - Uses selective subscriptions
+
 ## Implementation Status
 
 See `PLAN.md` for detailed work packages. Current status:

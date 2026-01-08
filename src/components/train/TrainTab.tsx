@@ -11,8 +11,20 @@ import { ErrorAnalysis } from './ErrorAnalysis';
 import { THEME_COLORS } from '../../utils/colors';
 
 export function TrainTab() {
-  const { config, trainingStatus, trainingError, currentEpoch, trainingHistory, bestValLoss, trainPredictions, valPredictions, networkWeights } = useModelStore();
-  const { trainData, validationData } = useDataStore();
+  // Use individual selectors to avoid re-rendering on unrelated store changes
+  const config = useModelStore(state => state.config);
+  const trainingStatus = useModelStore(state => state.trainingStatus);
+  const trainingError = useModelStore(state => state.trainingError);
+  const currentEpoch = useModelStore(state => state.currentEpoch);
+  const trainingHistory = useModelStore(state => state.trainingHistory);
+  const bestValLoss = useModelStore(state => state.bestValLoss);
+  const trainPredictions = useModelStore(state => state.trainPredictions);
+  const valPredictions = useModelStore(state => state.valPredictions);
+  const networkWeights = useModelStore(state => state.networkWeights);
+
+  // Use individual selectors for dataStore too
+  const trainData = useDataStore(state => state.trainData);
+  const validationData = useDataStore(state => state.validationData);
   const { startTraining, pauseTraining, resumeTraining, stopTraining, reset } = useTraining();
 
   // Compute shared domain for both scatterplots so they have the same axis scale

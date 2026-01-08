@@ -69,24 +69,26 @@ function getTargetValuesArray(
 export function useTraining() {
   const controllerRef = useRef<TrainingController | null>(null);
 
-  const {
-    config,
-    predictionUpdateInterval,
-    trainingInputFeatureIds,
-    trainingTargetFeatureId,
-    setModel,
-    addHistoryEntry,
-    clearHistory,
-    setCurrentEpoch,
-    setTrainingStatus,
-    setTrainingError,
-    setPredictions,
-    setNetworkWeights,
-    resetModel,
-  } = useModelStore();
+  // Use individual selectors to avoid re-rendering on unrelated store changes
+  const config = useModelStore(state => state.config);
+  const predictionUpdateInterval = useModelStore(state => state.predictionUpdateInterval);
+  const trainingInputFeatureIds = useModelStore(state => state.trainingInputFeatureIds);
+  const trainingTargetFeatureId = useModelStore(state => state.trainingTargetFeatureId);
+  const setModel = useModelStore(state => state.setModel);
+  const addHistoryEntry = useModelStore(state => state.addHistoryEntry);
+  const clearHistory = useModelStore(state => state.clearHistory);
+  const setCurrentEpoch = useModelStore(state => state.setCurrentEpoch);
+  const setTrainingStatus = useModelStore(state => state.setTrainingStatus);
+  const setTrainingError = useModelStore(state => state.setTrainingError);
+  const setPredictions = useModelStore(state => state.setPredictions);
+  const setNetworkWeights = useModelStore(state => state.setNetworkWeights);
+  const resetModel = useModelStore(state => state.resetModel);
 
-  const { rawData, validationSplit } = useDataStore();
-  const { getFeature, inverseTransform, initialized: featureStoreInitialized } = useFeatureStore();
+  const rawData = useDataStore(state => state.rawData);
+  const validationSplit = useDataStore(state => state.validationSplit);
+  const getFeature = useFeatureStore(state => state.getFeature);
+  const inverseTransform = useFeatureStore(state => state.inverseTransform);
+  const featureStoreInitialized = useFeatureStore(state => state.initialized);
 
   const startTraining = useCallback(async () => {
     // Clear any previous errors

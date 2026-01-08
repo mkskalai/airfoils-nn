@@ -16,7 +16,10 @@ interface Layer {
 }
 
 export function NetworkPreview() {
-  const { config, trainingInputFeatureIds, trainingTargetFeatureId } = useModelStore();
+  // Use individual selectors to avoid re-rendering on unrelated store changes
+  const config = useModelStore(state => state.config);
+  const trainingInputFeatureIds = useModelStore(state => state.trainingInputFeatureIds);
+  const trainingTargetFeatureId = useModelStore(state => state.trainingTargetFeatureId);
   const { getFeature } = useFeatureStore();
 
   // Get feature definitions for selected inputs and target
