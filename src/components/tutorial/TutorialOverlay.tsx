@@ -246,6 +246,7 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
   const skipTutorial = useTutorialStore(state => state.skipTutorial);
   const endTutorial = useTutorialStore(state => state.endTutorial);
   const setWaitingForTraining = useTutorialStore(state => state.setWaitingForTraining);
+  const setDistributionFeatureIds = useTutorialStore(state => state.setDistributionFeatureIds);
   const getCurrentStep = useTutorialStore(state => state.getCurrentStep);
   const getProgress = useTutorialStore(state => state.getProgress);
 
@@ -260,6 +261,9 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
 
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const [manualPosition, setManualPosition] = useState<{ top: number; left: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
   const prevStepRef = useRef<number>(-1);
 
   const currentStep = getCurrentStep();
@@ -373,6 +377,49 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
     });
   }, [currentStep, targetRect]);
 
+  // Drag handlers
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    // Only drag on left mouse button
+    if (e.button !== 0) return;
+
+    setIsDragging(true);
+    const currentPos = manualPosition ?? tooltipPosition;
+    dragOffsetRef.current = {
+      x: e.clientX - currentPos.left,
+      y: e.clientY - currentPos.top
+    };
+    e.preventDefault();
+  }, [manualPosition, tooltipPosition]);
+
+  const handleDrag = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+
+    const padding = 16;
+    const tooltipWidth = Math.min(420, window.innerWidth - padding * 2);
+    const tooltipHeight = 400;
+
+    const newLeft = Math.max(padding, Math.min(e.clientX - dragOffsetRef.current.x, window.innerWidth - tooltipWidth - padding));
+    const newTop = Math.max(padding, Math.min(e.clientY - dragOffsetRef.current.y, window.innerHeight - tooltipHeight - padding));
+
+    setManualPosition({ top: newTop, left: newLeft });
+  }, [isDragging]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Attach/detach global mouse events for dragging
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDrag);
+      window.addEventListener('mouseup', handleDragEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleDrag);
+        window.removeEventListener('mouseup', handleDragEnd);
+      };
+    }
+  }, [isDragging, handleDrag, handleDragEnd]);
+
   // Handle step changes
   useEffect(() => {
     if (!isActive || !currentStep) return;
@@ -380,6 +427,9 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
     // Only apply config when step changes
     if (prevStepRef.current !== currentStepIndex) {
       prevStepRef.current = currentStepIndex;
+
+      // Reset manual position when step changes
+      setManualPosition(null);
 
       // Reset model before "click train" steps (not results steps)
       if (currentStep.requiresAction && currentStep.autoAdvanceOnTrainingStart) {
@@ -430,6 +480,14 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
               );
             }
           }
+        }
+
+        // Set distribution features to display
+        if (config.distributionFeatures) {
+          setDistributionFeatureIds(config.distributionFeatures);
+        } else {
+          // Clear tutorial-controlled distribution features if not specified
+          setDistributionFeatureIds(null);
         }
       }, 100);
 
@@ -526,10 +584,10 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
       <div
         className="fixed z-[1000] w-[420px] max-w-[calc(100vw-32px)] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col"
         style={{
-          top: tooltipPosition.top,
-          left: tooltipPosition.left,
+          top: (manualPosition ?? tooltipPosition).top,
+          left: (manualPosition ?? tooltipPosition).left,
           // Dynamically set max-height to prevent overflow past viewport bottom
-          maxHeight: `calc(100vh - ${tooltipPosition.top}px - 16px)`,
+          maxHeight: `calc(100vh - ${(manualPosition ?? tooltipPosition).top}px - 16px)`,
         }}
       >
         {/* Progress bar */}
@@ -540,8 +598,11 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
           />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        {/* Header - draggable */}
+        <div
+          className="flex items-center justify-between px-5 py-3 border-b border-gray-100 cursor-grab active:cursor-grabbing select-none"
+          onMouseDown={handleDragStart}
+        >
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-accent/10 text-accent font-bold flex items-center justify-center text-sm">
               {currentStepIndex + 1}
@@ -550,6 +611,7 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
           </div>
           <button
             onClick={skipTutorial}
+            onMouseDown={(e) => e.stopPropagation()}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             title="Skip tutorial"
           >
