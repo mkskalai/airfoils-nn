@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useDataStore } from '../../stores/dataStore';
 import { useFeatureStore } from '../../stores/featureStore';
+import { useTutorialStore } from '../../stores/tutorialStore';
 import { type DataPoint } from '../../types';
 import { ScatterplotMatrix } from './ScatterplotMatrix';
 import { CorrelationHeatmap } from './CorrelationHeatmap';
@@ -10,41 +11,40 @@ import { PCAVisualization } from './PCAVisualization';
 import { FeatureSelector } from '../common/FeatureSelector';
 import { FeatureStatsTable } from './FeatureStatsTable';
 
-// Default features for scatterplot: Angle of Attack and SPL (target)
-const DEFAULT_SCATTER_FEATURES = ['angleOfAttack', 'soundPressureLevel'];
-
-// Original feature IDs for default plot initialization (new features are NOT auto-added)
-const DEFAULT_PLOT_FEATURES = [
-  'frequency', 'angleOfAttack', 'chordLength', 'freeStreamVelocity',
-  'suctionSideDisplacementThickness', 'soundPressureLevel'
-];
-
 export function ExploreTab() {
   const { rawData, stats, isLoading, error } = useDataStore();
-  const { features } = useFeatureStore();
 
-  // Scatterplot feature selection (default to AoA and SPL)
-  const [scatterFeatureIds, setScatterFeatureIds] = useState<string[]>(DEFAULT_SCATTER_FEATURES);
+  // Use selective subscriptions for feature store (persisted across tab switches)
+  const features = useFeatureStore(state => state.features);
+  const scatterFeatureIds = useFeatureStore(state => state.exploreScatterFeatureIds);
+  const setScatterFeatureIds = useFeatureStore(state => state.setExploreScatterFeatureIds);
+  const corrFeatureIds = useFeatureStore(state => state.exploreCorrFeatureIds);
+  const setCorrFeatureIds = useFeatureStore(state => state.setExploreCorrFeatureIds);
+  const distFeatureIds = useFeatureStore(state => state.exploreDistFeatureIds);
+  const setDistFeatureIds = useFeatureStore(state => state.setExploreDistFeatureIds);
+  const showKDE = useFeatureStore(state => state.exploreShowKDE);
+  const setShowKDE = useFeatureStore(state => state.setExploreShowKDE);
 
-  // Linked brushing state
+  // Tutorial-controlled distribution features
+  const tutorialIsActive = useTutorialStore(state => state.isActive);
+  const tutorialDistFeatureIds = useTutorialStore(state => state.distributionFeatureIds);
+
+  // Linked brushing state (local - not persisted)
   const [brushedIndices, setBrushedIndices] = useState<Set<number>>(new Set());
-
-  // KDE toggle
-  const [showKDE, setShowKDE] = useState(true);
-
-  // Per-section feature selection - start with original features only (not auto-updated with new features)
-  const [corrFeatureIds, setCorrFeatureIds] = useState<string[]>(DEFAULT_PLOT_FEATURES);
-  const [distFeatureIds, setDistFeatureIds] = useState<string[]>(DEFAULT_PLOT_FEATURES);
 
   // Effective feature IDs (filter out any that no longer exist)
   const effectiveCorrFeatureIds = useMemo(() =>
     corrFeatureIds.filter(id => features[id]),
     [corrFeatureIds, features]
   );
-  const effectiveDistFeatureIds = useMemo(() =>
-    distFeatureIds.filter(id => features[id]),
-    [distFeatureIds, features]
-  );
+
+  // Use tutorial-controlled features if available, otherwise use user selection
+  const effectiveDistFeatureIds = useMemo(() => {
+    const sourceIds = (tutorialIsActive && tutorialDistFeatureIds)
+      ? tutorialDistFeatureIds
+      : distFeatureIds;
+    return sourceIds.filter(id => features[id]);
+  }, [tutorialIsActive, tutorialDistFeatureIds, distFeatureIds, features]);
 
   // Container refs for measuring widths
   const scatterContainerRef = useRef<HTMLDivElement>(null);

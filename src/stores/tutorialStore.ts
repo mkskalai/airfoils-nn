@@ -51,6 +51,7 @@ export interface TutorialStep {
       transform: string;
       params?: { expression?: string; inverseExpression?: string };
     }>;
+    distributionFeatures?: string[]; // Feature IDs to show in distribution charts
   };
   // Action requirements
   requiresAction?: boolean; // User must perform action, Next is disabled
@@ -73,6 +74,9 @@ interface TutorialState {
 
   // UI state
   showWelcome: boolean;
+
+  // Tutorial-controlled distribution features
+  distributionFeatureIds: string[] | null;
 }
 
 interface TutorialActions {
@@ -88,6 +92,9 @@ interface TutorialActions {
 
   // Training wait
   setWaitingForTraining: (waiting: boolean) => void;
+
+  // Distribution features
+  setDistributionFeatureIds: (ids: string[] | null) => void;
 
   // Welcome dialog
   showWelcomeDialog: () => void;
@@ -418,37 +425,88 @@ Let's create specialized transforms for each feature based on their distribution
     position: 'right',
   },
 
-  // Step 14: Create Specialized Transforms
+  // Step 14: Create Non-Linear Transforms
   {
     id: 'create-transforms-custom',
-    title: 'Step 14: Custom Transforms',
-    content: `Now we'll create **specialized transforms** for each feature:
+    title: 'Step 14: Non-Linear Transforms',
+    content: `Let's create **non-linear transforms** for the skewed features:
 
-- **Frequency**: Log transform (handles the skewed distribution)
-- **Angle of Attack, Chord Length, Velocity**: Min-max scaling
-- **Displacement Thickness**: Power transform (x^0.25)
-- **Sound Pressure Level**: Keep Z-score (it's already Gaussian)
+- **Frequency**: Log transform \`log(x+1)\` - compresses the huge range
+- **Displacement Thickness**: Power transform \`x^0.25\` - spreads out the clustered values
 
-These domain-specific transforms can significantly improve model performance by making the data more "learnable"!`,
+These transforms reshape the data distributions to be more [Gaussian](${ML_WIKI_LINKS.gaussian})-like, which neural networks learn from more effectively.`,
     tab: 'explore',
     highlightSelector: '[data-tutorial="feature-engineering"]',
     position: 'right',
     autoConfig: {
       createTransforms: [
         { sourceFeatureId: 'frequency', transform: 'custom', params: { expression: 'log(x+1)', inverseExpression: 'exp(x)-1' } },
-        { sourceFeatureId: 'angleOfAttack', transform: 'minmax' },
-        { sourceFeatureId: 'chordLength', transform: 'minmax' },
-        { sourceFeatureId: 'freeStreamVelocity', transform: 'minmax' },
         { sourceFeatureId: 'suctionSideDisplacementThickness', transform: 'custom', params: { expression: 'pow(x,0.25)', inverseExpression: 'pow(x,4)' } },
       ],
     },
   },
 
-  // Step 15: Train with Custom Transforms
+  // Step 15: Show Transformed Distributions
+  {
+    id: 'show-transformed-distributions',
+    title: 'Step 15: Improved Distributions',
+    content: `Look at the **transformed distributions**!
+
+Compare the original features (left) with their transforms (right):
+
+- **Frequency** → **log(Frequency)**: The skewed distribution becomes much more spread out and Gaussian-like!
+
+- **Displacement** → **pow(Displacement)**: Values that were clustered near zero are now spread across the range!
+
+These smoother distributions make the features much easier for neural networks to learn from. But we still need to **normalize the scale**...`,
+    tab: 'explore',
+    highlightSelector: '[data-tutorial="distribution-chart"]',
+    position: 'right',
+    autoConfig: {
+      distributionFeatures: [
+        'frequency',
+        'frequency_custom_1',
+        'suctionSideDisplacementThickness',
+        'suctionSideDisplacementThickness_custom_1',
+      ],
+    },
+  },
+
+  // Step 16: Create Z-Score on Top
+  {
+    id: 'create-zscore-on-transforms',
+    title: 'Step 16: Normalize Transformed Features',
+    content: `The non-linear transforms improved the **shape** of distributions, but the **scale** is still different across features.
+
+Now we'll apply [Z-score normalization](${ML_WIKI_LINKS.zScore}) on top of our transformed features:
+- **log(Frequency)** → Z-score → mean=0, std=1
+- **pow(Displacement)** → Z-score → mean=0, std=1
+
+We'll also add min-max scaling for the other features. This **two-step transformation** (reshape + normalize) is a powerful technique!`,
+    tab: 'explore',
+    highlightSelector: '[data-tutorial="feature-engineering"]',
+    position: 'right',
+    autoConfig: {
+      createTransforms: [
+        { sourceFeatureId: 'frequency_custom_1', transform: 'zscore' },
+        { sourceFeatureId: 'suctionSideDisplacementThickness_custom_1', transform: 'zscore' },
+        { sourceFeatureId: 'angleOfAttack', transform: 'minmax' },
+        { sourceFeatureId: 'chordLength', transform: 'minmax' },
+        { sourceFeatureId: 'freeStreamVelocity', transform: 'minmax' },
+      ],
+    },
+  },
+
+  // Step 17: Train with Custom Transforms
   {
     id: 'train-custom',
-    title: 'Step 15: Train with Custom Transforms',
-    content: `Now let's train with our **specialized transforms**!
+    title: 'Step 17: Train with Custom Transforms',
+    content: `Now let's train with our **carefully engineered features**!
+
+We're using:
+- **log(Frequency) + Z-score**: Reshaped AND normalized
+- **pow(Displacement) + Z-score**: Reshaped AND normalized
+- **Min-max scaling** for the other three features
 
 We'll use a simpler architecture - just **1 hidden layer** with 8 neurons - to show that good feature engineering can be more important than complex networks.
 
@@ -458,11 +516,11 @@ Click **Start Training**!`,
     position: 'left',
     autoConfig: {
       inputFeatures: [
-        'frequency_custom_1',
+        'frequency_custom_1_zscore_1',
         'angleOfAttack_minmax_1',
         'chordLength_minmax_1',
         'freeStreamVelocity_minmax_1',
-        'suctionSideDisplacementThickness_custom_1',
+        'suctionSideDisplacementThickness_custom_1_zscore_1',
       ],
       targetFeature: 'soundPressureLevel_zscore_1',
       modelConfig: {
@@ -476,25 +534,25 @@ Click **Start Training**!`,
     actionLabel: 'Click the highlighted "Start Training" button',
   },
 
-  // Step 16: Observe Training Progress (Custom)
+  // Step 18: Observe Training Progress (Custom)
   {
     id: 'observe-training-custom',
-    title: 'Step 16: Watch Custom Transforms Train',
-    content: `Watch how the model performs with **custom transforms**!
+    title: 'Step 18: Watch Custom Transforms Train',
+    content: `Watch how the model performs with **two-step transformed features**!
 
 Even with a simpler 1-layer architecture, good feature engineering can achieve excellent results.
 
-The right transforms make the relationships between features and target more **linear and learnable** for the network.`,
+The combination of **reshaping** (log, pow) and **normalizing** (z-score) makes the relationships between features and target more **linear and learnable** for the network.`,
     tab: 'train',
     highlightSelector: '[data-tutorial="loss-chart"]',
     position: 'left',
     waitForTraining: true,
   },
 
-  // Step 17: Amazing Results
+  // Step 19: Amazing Results
   {
     id: 'results-custom',
-    title: 'Step 17: Outstanding Results!',
+    title: 'Step 19: Outstanding Results!',
     content: `**Wow!** Look at those results!
 
 With the right transforms, even a **single-layer network** achieves better performance than a deeper network with simple Z-score normalization!
@@ -503,13 +561,13 @@ This demonstrates a key insight in machine learning:
 
 > **Feature engineering is often more important than model complexity.**
 
-Good data preparation can make the difference between a mediocre and an excellent model.`,
+The two-step approach (reshape distribution + normalize scale) can make the difference between a mediocre and an excellent model.`,
     tab: 'train',
     highlightSelector: '[data-tutorial="metrics-panel"]',
     position: 'left',
   },
 
-  // Step 18: Conclusion
+  // Step 20: Conclusion
   {
     id: 'conclusion',
     title: 'Congratulations!',
@@ -539,6 +597,7 @@ const initialState: TutorialState = {
   currentStepIndex: 0,
   isWaitingForTraining: false,
   showWelcome: false,
+  distributionFeatureIds: null,
 };
 
 export const useTutorialStore = create<TutorialStore>()(
@@ -561,6 +620,7 @@ export const useTutorialStore = create<TutorialStore>()(
           hasSeenTutorial: true,
           currentStepIndex: 0,
           isWaitingForTraining: false,
+          distributionFeatureIds: null,
         });
       },
 
@@ -570,6 +630,7 @@ export const useTutorialStore = create<TutorialStore>()(
           hasSeenTutorial: true,
           showWelcome: false,
           isWaitingForTraining: false,
+          distributionFeatureIds: null,
         });
       },
 
@@ -602,6 +663,10 @@ export const useTutorialStore = create<TutorialStore>()(
 
       setWaitingForTraining: (waiting: boolean) => {
         set({ isWaitingForTraining: waiting });
+      },
+
+      setDistributionFeatureIds: (ids: string[] | null) => {
+        set({ distributionFeatureIds: ids });
       },
 
       showWelcomeDialog: () => {

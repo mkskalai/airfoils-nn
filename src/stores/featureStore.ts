@@ -56,11 +56,24 @@ export interface PCAResult {
   createdAt: number; // Timestamp for ordering
 }
 
+// Default features for Explore tab UI persistence
+const DEFAULT_SCATTER_FEATURES = ['angleOfAttack', 'soundPressureLevel'];
+const DEFAULT_PLOT_FEATURES = [
+  'frequency', 'angleOfAttack', 'chordLength', 'freeStreamVelocity',
+  'suctionSideDisplacementThickness', 'soundPressureLevel'
+];
+
 interface FeatureState {
   features: Record<string, FeatureDefinition>;
   pcaResults: Record<string, PCAResult>;
   selectedFeatureIds: string[];
   initialized: boolean;
+
+  // Explore tab UI state (persisted across tab switches)
+  exploreScatterFeatureIds: string[];
+  exploreCorrFeatureIds: string[];
+  exploreDistFeatureIds: string[];
+  exploreShowKDE: boolean;
 }
 
 interface FeatureActions {
@@ -121,6 +134,12 @@ interface FeatureActions {
   // Persistence
   exportConfig: () => FeatureStoreConfig;
   importConfig: (config: FeatureStoreConfig) => void;
+
+  // Explore tab UI state setters
+  setExploreScatterFeatureIds: (ids: string[]) => void;
+  setExploreCorrFeatureIds: (ids: string[]) => void;
+  setExploreDistFeatureIds: (ids: string[]) => void;
+  setExploreShowKDE: (show: boolean) => void;
 }
 
 export type FeatureStore = FeatureState & FeatureActions;
@@ -173,6 +192,11 @@ const initialState: FeatureState = {
   pcaResults: {},
   selectedFeatureIds: [...ORIGINAL_FEATURE_IDS],
   initialized: false,
+  // Explore tab UI state
+  exploreScatterFeatureIds: DEFAULT_SCATTER_FEATURES,
+  exploreCorrFeatureIds: DEFAULT_PLOT_FEATURES,
+  exploreDistFeatureIds: DEFAULT_PLOT_FEATURES,
+  exploreShowKDE: true,
 };
 
 export const useFeatureStore = create<FeatureStore>((set, get) => ({
@@ -650,6 +674,12 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     const validIds = config.selectedFeatureIds.filter(id => id in get().features);
     set({ selectedFeatureIds: validIds });
   },
+
+  // Explore tab UI state setters
+  setExploreScatterFeatureIds: (ids) => set({ exploreScatterFeatureIds: ids }),
+  setExploreCorrFeatureIds: (ids) => set({ exploreCorrFeatureIds: ids }),
+  setExploreDistFeatureIds: (ids) => set({ exploreDistFeatureIds: ids }),
+  setExploreShowKDE: (show) => set({ exploreShowKDE: show }),
 }));
 
 /**
