@@ -58,7 +58,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   loadData: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('/airfoil_self_noise.dat');
+      const response = await fetch(`${import.meta.env.BASE_URL}airfoil_self_noise.dat`);
       if (!response.ok) {
         throw new Error('Failed to fetch dataset');
       }
