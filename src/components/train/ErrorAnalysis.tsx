@@ -324,7 +324,7 @@ export function ErrorAnalysis({ trainPredictions, valPredictions }: ErrorAnalysi
                          activeTab === 'validation' ? valMetrics : valMetrics;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5" data-tutorial="metrics-panel">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">

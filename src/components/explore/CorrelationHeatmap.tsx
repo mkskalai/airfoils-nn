@@ -292,7 +292,7 @@ export function CorrelationHeatmap({
   });
 
   return (
-    <div className="relative flex flex-col flex-1">
+    <div className="relative flex flex-col flex-1" data-tutorial="correlation-heatmap">
       <div className="absolute top-1 right-1 z-10">
         <DownloadButton
           svgRef={svgRef}

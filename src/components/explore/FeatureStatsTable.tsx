@@ -181,7 +181,7 @@ export function FeatureStatsTable({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6" data-tutorial="feature-stats">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xl font-semibold text-gray-800">Feature Statistics</h3>
         <span className="text-sm text-gray-500">

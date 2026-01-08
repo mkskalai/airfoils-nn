@@ -23,6 +23,8 @@ export const KNOWN_INVERSES: Record<string, string> = {
   'sqrt(x)': 'pow(x,2)',
   'pow(x,2)': 'sqrt(x)',
   'pow(x,0.5)': 'pow(x,2)',
+  'pow(x,0.25)': 'pow(x,4)',
+  'pow(x,4)': 'pow(x,0.25)',
   '(x-min)/(max-min)': 'x*(max-min)+min',
   '(x-mean)/std': 'x*std+mean',
   'exp(x)': 'log(x)',

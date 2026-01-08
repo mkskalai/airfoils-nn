@@ -49,7 +49,7 @@ export interface TutorialStep {
     createTransforms?: Array<{
       sourceFeatureId: string;
       transform: string;
-      params?: Record<string, number>;
+      params?: { expression?: string; inverseExpression?: string };
     }>;
   };
   // Action requirements
@@ -435,11 +435,11 @@ These domain-specific transforms can significantly improve model performance by 
     position: 'right',
     autoConfig: {
       createTransforms: [
-        { sourceFeatureId: 'frequency', transform: 'log' },
+        { sourceFeatureId: 'frequency', transform: 'custom', params: { expression: 'log(x+1)', inverseExpression: 'exp(x)-1' } },
         { sourceFeatureId: 'angleOfAttack', transform: 'minmax' },
         { sourceFeatureId: 'chordLength', transform: 'minmax' },
         { sourceFeatureId: 'freeStreamVelocity', transform: 'minmax' },
-        { sourceFeatureId: 'suctionSideDisplacementThickness', transform: 'power', params: { power: 0.25 } },
+        { sourceFeatureId: 'suctionSideDisplacementThickness', transform: 'custom', params: { expression: 'pow(x,0.25)', inverseExpression: 'pow(x,4)' } },
       ],
     },
   },
@@ -458,11 +458,11 @@ Click **Start Training**!`,
     position: 'left',
     autoConfig: {
       inputFeatures: [
-        'frequency_log_1',
+        'frequency_custom_1',
         'angleOfAttack_minmax_1',
         'chordLength_minmax_1',
         'freeStreamVelocity_minmax_1',
-        'suctionSideDisplacementThickness_power_1',
+        'suctionSideDisplacementThickness_custom_1',
       ],
       targetFeature: 'soundPressureLevel_zscore_1',
       modelConfig: {

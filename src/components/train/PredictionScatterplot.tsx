@@ -246,7 +246,7 @@ export function PredictionScatterplot({
     }));
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="relative w-full" data-tutorial="prediction-scatter">
       {/* Title and Stats */}
       <div className="flex justify-between items-center mb-2 px-1">
         <h4 className="text-sm font-semibold text-gray-700">{title}</h4>

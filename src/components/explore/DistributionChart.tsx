@@ -250,7 +250,7 @@ export function DistributionChart({
   };
 
   return (
-    <div className="bg-white rounded-lg p-3 border border-gray-100">
+    <div className="bg-white rounded-lg p-3 border border-gray-100" data-tutorial="distribution-chart">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           <h4 className={`text-base font-semibold ${isTarget ? 'text-warm' : 'text-gray-700'}`}>

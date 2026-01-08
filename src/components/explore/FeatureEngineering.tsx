@@ -156,7 +156,7 @@ export function FeatureEngineering() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200" data-tutorial="feature-engineering">
       {/* Header - clickable to expand/collapse */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -294,6 +294,7 @@ export function FeatureEngineering() {
             <button
               onClick={() => setShowTransformDialog(true)}
               className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-accent/10 text-accent font-medium rounded-lg hover:bg-accent/20 transition-colors"
+              data-tutorial="add-transform-button"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

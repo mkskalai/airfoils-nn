@@ -395,7 +395,7 @@ export function LossChart({
     }));
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="relative w-full" data-tutorial="loss-chart">
       {/* Log scale toggle - positioned above Y axis */}
       <div className="absolute top-0 left-0 z-10">
         <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none bg-white/80 px-1 py-0.5 rounded">

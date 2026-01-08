@@ -290,17 +290,24 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
     }
   }, [currentStep?.highlightSelector]);
 
-  // Calculate tooltip position
+  // Calculate tooltip position - ensures dialog always stays on screen
   const calculateTooltipPosition = useCallback(() => {
     const padding = 16;
-    const tooltipWidth = 420;
+    const baseTooltipWidth = 420;
     const tooltipHeight = 400; // Approximate max height
+
+    // Responsive width - use smaller width on small screens
+    const tooltipWidth = Math.min(baseTooltipWidth, window.innerWidth - padding * 2);
+
+    // Helper to clamp position within viewport
+    const clampLeft = (l: number) => Math.max(padding, Math.min(l, window.innerWidth - tooltipWidth - padding));
+    const clampTop = (t: number) => Math.max(padding, Math.min(t, window.innerHeight - tooltipHeight - padding));
 
     if (!currentStep || currentStep.position === 'center' || !targetRect) {
       // Center horizontally, position near top with room to scroll
       setTooltipPosition({
-        top: Math.max(padding, window.innerHeight * 0.08),
-        left: window.innerWidth / 2 - tooltipWidth / 2,
+        top: Math.max(padding, Math.min(window.innerHeight * 0.08, window.innerHeight - tooltipHeight - padding)),
+        left: clampLeft(window.innerWidth / 2 - tooltipWidth / 2),
       });
       return;
     }
@@ -309,35 +316,61 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
     let top = 0;
     let left = 0;
 
+    // Check available space on each side
+    const spaceRight = window.innerWidth - targetRect.right - padding;
+    const spaceLeft = targetRect.left - padding;
+    const spaceTop = targetRect.top - padding;
+    const spaceBottom = window.innerHeight - targetRect.bottom - padding;
+
     switch (pos) {
       case 'right':
-        top = Math.max(padding, Math.min(targetRect.top, window.innerHeight - tooltipHeight - padding));
-        left = targetRect.right + padding;
-        if (left + tooltipWidth > window.innerWidth - padding) {
+        top = clampTop(targetRect.top);
+        // Try right first, then left, then center
+        if (spaceRight >= tooltipWidth) {
+          left = targetRect.right + padding;
+        } else if (spaceLeft >= tooltipWidth) {
           left = targetRect.left - tooltipWidth - padding;
+        } else {
+          // Center horizontally if neither side fits
+          left = clampLeft(window.innerWidth / 2 - tooltipWidth / 2);
         }
         break;
       case 'left':
-        top = Math.max(padding, Math.min(targetRect.top, window.innerHeight - tooltipHeight - padding));
-        left = targetRect.left - tooltipWidth - padding;
-        if (left < padding) {
+        top = clampTop(targetRect.top);
+        // Try left first, then right, then center
+        if (spaceLeft >= tooltipWidth) {
+          left = targetRect.left - tooltipWidth - padding;
+        } else if (spaceRight >= tooltipWidth) {
           left = targetRect.right + padding;
+        } else {
+          left = clampLeft(window.innerWidth / 2 - tooltipWidth / 2);
         }
         break;
       case 'top':
-        top = targetRect.top - tooltipHeight - padding;
-        left = Math.max(padding, Math.min(targetRect.left, window.innerWidth - tooltipWidth - padding));
-        if (top < padding) {
-          top = targetRect.bottom + padding;
+        left = clampLeft(targetRect.left);
+        // Try top first, then bottom
+        if (spaceTop >= tooltipHeight) {
+          top = targetRect.top - tooltipHeight - padding;
+        } else {
+          top = clampTop(targetRect.bottom + padding);
         }
         break;
       case 'bottom':
-        top = targetRect.bottom + padding;
-        left = Math.max(padding, Math.min(targetRect.left, window.innerWidth - tooltipWidth - padding));
+        left = clampLeft(targetRect.left);
+        // Try bottom first, then top
+        if (spaceBottom >= tooltipHeight) {
+          top = targetRect.bottom + padding;
+        } else {
+          top = clampTop(targetRect.top - tooltipHeight - padding);
+        }
         break;
     }
 
-    setTooltipPosition({ top, left });
+    // Final safety clamp to ensure dialog is always visible
+    setTooltipPosition({
+      top: clampTop(top),
+      left: clampLeft(left)
+    });
   }, [currentStep, targetRect]);
 
   // Handle step changes
@@ -489,12 +522,14 @@ export function TutorialOverlay({ onTabChange }: TutorialOverlayProps) {
         />
       )}
 
-      {/* Tooltip */}
+      {/* Tooltip - uses both top and max-height to ensure it stays within viewport */}
       <div
-        className="fixed z-[1000] w-[420px] max-h-[85vh] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col"
+        className="fixed z-[1000] w-[420px] max-w-[calc(100vw-32px)] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col"
         style={{
           top: tooltipPosition.top,
           left: tooltipPosition.left,
+          // Dynamically set max-height to prevent overflow past viewport bottom
+          maxHeight: `calc(100vh - ${tooltipPosition.top}px - 16px)`,
         }}
       >
         {/* Progress bar */}
